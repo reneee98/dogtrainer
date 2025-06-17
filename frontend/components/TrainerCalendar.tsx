@@ -684,12 +684,15 @@ const TrainerCalendar = () => {
                         `}
                       >
                         <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium text-gray-900 truncate pr-2">
-                              {session.title}
-                            </div>
-                            <div className="text-xs text-gray-600 mt-0.5">
-                              {session.signups?.length || 0}/{session.capacity} účastníkov
+                          <div className="flex items-start space-x-2 flex-1 min-w-0">
+                            <div className={`w-2 h-2 rounded-full ${getSessionColor(session)} flex-shrink-0 mt-1`}></div>
+                            <div className="flex-1 min-w-0">
+                              <div className={`text-xs font-medium truncate pr-2 ${getSessionColorVariants(session).text}`}>
+                                {getSessionLabel(session)}
+                              </div>
+                              <div className="text-xs text-gray-600 mt-0.5">
+                                {session.signups?.length || 0}/{session.capacity} účastníkov
+                              </div>
                             </div>
                           </div>
                           <div className="text-xs font-medium text-gray-700 flex-shrink-0">
