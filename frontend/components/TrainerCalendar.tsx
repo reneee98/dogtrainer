@@ -451,7 +451,7 @@ const TrainerCalendar = () => {
 
   const getCalendarTitle = () => {
     if (viewMode === 'list') {
-      return 'Nadchádzajúce tréningy';
+      return 'Tréningy';
     } else if (viewMode === 'week') {
       const weekDays = getWeekDays();
       const start = weekDays[0];
@@ -491,53 +491,49 @@ const TrainerCalendar = () => {
       );
     }
 
-    return (
+        return (
       <div className="space-y-4">
-        <div className="flex justify-between items-center px-1 mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Nadchádzajúce tréningy</h2>
+        {/* Action button */}
+        <div className="flex justify-end px-1 mb-4">
           <button
             onClick={() => handleCreateSessionClick(new Date())}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2"
           >
             <PlusIcon className="h-4 w-4" />
-            <span>Nový</span>
+            <span className="hidden sm:inline">Nový tréning</span>
+            <span className="sm:hidden">Nový</span>
           </button>
         </div>
 
-        {/* Table header */}
-        <div className="bg-gray-50 rounded-lg p-3 mb-2">
-          <div className="grid grid-cols-12 gap-3 text-xs font-medium text-gray-500 uppercase tracking-wide">
-            <div className="col-span-3">Služba</div>
-            <div className="col-span-2">Dátum</div>
-            <div className="col-span-2">Čas</div>
-            <div className="col-span-2">Lokácia</div>
-            <div className="col-span-1">Účastníci</div>
-            <div className="col-span-1">Cena</div>
-            <div className="col-span-1">Akcie</div>
+        {/* Desktop Table */}
+        <div className="hidden md:block">
+          {/* Table header */}
+          <div className="bg-gray-50 rounded-lg p-3 mb-2">
+            <div className="grid grid-cols-12 gap-3 text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <div className="col-span-3">Služba</div>
+              <div className="col-span-2">Dátum</div>
+              <div className="col-span-2">Čas</div>
+              <div className="col-span-2">Lokácia</div>
+              <div className="col-span-1">Účastníci</div>
+              <div className="col-span-1">Cena</div>
+              <div className="col-span-1">Akcie</div>
+            </div>
           </div>
-        </div>
 
-        {/* Table rows */}
-        <div className="space-y-1">
-          {upcomingSessions.map((session) => {
-            const colorVariants = getSessionColorVariants(session);
-            
-            return (
+          {/* Table rows */}
+          <div className="space-y-1">
+            {upcomingSessions.map((session) => (
               <div
                 key={session.id}
                 onClick={() => handleSessionClick(session)}
-                className={`
-                  bg-white rounded-lg border transition-all duration-200 cursor-pointer
-                  hover:shadow-md hover:bg-gray-50 active:scale-[0.99]
-                  ${colorVariants.border}
-                `}
+                className="bg-white rounded-lg border border-gray-200 transition-all duration-200 cursor-pointer hover:shadow-md hover:bg-gray-50 active:scale-[0.99]"
               >
                 <div className="grid grid-cols-12 gap-3 p-3 items-center">
                   {/* Service */}
                   <div className="col-span-3 flex items-center space-x-2">
                     <div className={`w-2 h-2 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
                     <div className="min-w-0">
-                      <div className={`text-sm font-medium truncate ${colorVariants.text}`}>
+                      <div className="text-sm font-medium truncate text-gray-900">
                         {getSessionLabel(session)}
                       </div>
                       <div className={`text-xs px-1.5 py-0.5 rounded-full inline-block ${
@@ -577,13 +573,13 @@ const TrainerCalendar = () => {
                       {session.signups?.length || 0}/{session.capacity}
                     </div>
                     {session.capacity > 0 && (
-                      <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
-                        <div 
-                          className={`h-1 rounded-full ${getSessionColor(session)}`}
-                          style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
-                        ></div>
-                      </div>
-                    )}
+                       <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
+                         <div 
+                           className="h-1 rounded-full bg-blue-500"
+                           style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
+                         ></div>
+                       </div>
+                     )}
                   </div>
                   
                   {/* Price */}
@@ -620,8 +616,99 @@ const TrainerCalendar = () => {
                   </div>
                 </div>
               </div>
-            );
-          })}
+            ))}
+          </div>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="md:hidden space-y-3">
+          {upcomingSessions.map((session) => (
+            <div
+              key={session.id}
+              onClick={() => handleSessionClick(session)}
+              className="bg-white rounded-lg border border-gray-200 p-4 transition-all duration-200 cursor-pointer hover:shadow-md active:scale-[0.98]"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
+                  <div className="font-medium text-gray-900">
+                    {getSessionLabel(session)}
+                  </div>
+                  <div className={`text-xs px-2 py-0.5 rounded-full ${
+                    session.status === 'scheduled' ? 'bg-green-100 text-green-700' :
+                    session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {getStatusLabel(session.status)}
+                  </div>
+                </div>
+                <div className="text-lg font-semibold text-gray-900">
+                  {session.price}€
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Dátum:</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {formatRelativeDate(session.start_time)}
+                  </span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Čas:</span>
+                  <span className="text-sm text-gray-900">
+                    {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                  </span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Lokácia:</span>
+                  <span className="text-sm text-gray-900">{session.location}</span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Účastníci:</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-900">
+                      {session.signups?.length || 0}/{session.capacity}
+                    </span>
+                    {session.capacity > 0 && (
+                      <div className="w-16 bg-gray-200 rounded-full h-1">
+                        <div 
+                          className="h-1 rounded-full bg-blue-500"
+                          style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-2 mt-3 pt-3 border-t border-gray-100">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditSession(session);
+                  }}
+                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="Upraviť"
+                >
+                  <PencilIcon className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteSession(session.id);
+                  }}
+                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Zmazať"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -678,18 +765,21 @@ const TrainerCalendar = () => {
                         <div
                           key={session.id}
                           onClick={() => handleSessionClick(session)}
-                          className={`p-3 rounded-lg cursor-pointer transition-all active:scale-[0.98] ${getSessionColor(session)} text-white`}
-                        >
-                          <div className="font-medium text-sm">{session.title}</div>
-                          <div className="text-xs opacity-90">
-                            {formatTime(session.start_time)} - {formatTime(session.end_time)}
-                          </div>
-                          <div className="text-xs opacity-75">{session.location}</div>
-                          {session.signups && (
-                            <div className="text-xs opacity-90 mt-1">
-                              {session.signups.length}/{session.capacity} účastníkov
+                          className="p-3 rounded-lg cursor-pointer transition-all active:scale-[0.98] bg-gray-100 border border-gray-200"
+                                                  >
+                            <div className="flex items-center space-x-2 mb-2">
+                              <div className={`w-2 h-2 rounded-full ${getSessionColor(session)}`}></div>
+                              <div className="font-medium text-sm text-gray-900">{getSessionLabel(session)}</div>
                             </div>
-                          )}
+                            <div className="text-xs text-gray-600">
+                              {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                            </div>
+                            <div className="text-xs text-gray-600">{session.location}</div>
+                            {session.signups && (
+                              <div className="text-xs text-gray-600 mt-1">
+                                {session.signups.length}/{session.capacity} účastníkov
+                              </div>
+                            )}
                         </div>
                       ))}
                     </div>
@@ -747,18 +837,15 @@ const TrainerCalendar = () => {
                       <button
                         key={session.id}
                         onClick={() => handleSessionClick(session)}
-                        className={`
-                          w-full text-left p-2 rounded-md transition-all hover:scale-[1.02] cursor-pointer border
-                          ${getSessionColorVariants(session).light} ${getSessionColorVariants(session).border} ${getSessionColorVariants(session).hover}
-                        `}
+                        className="w-full text-left p-2 rounded-md transition-all hover:scale-[1.02] cursor-pointer border border-gray-200 bg-gray-50 hover:bg-gray-100"
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex items-start space-x-2 flex-1 min-w-0">
                             <div className={`w-2 h-2 rounded-full ${getSessionColor(session)} flex-shrink-0 mt-1`}></div>
                             <div className="flex-1 min-w-0">
-                              <div className={`text-xs font-medium truncate pr-2 ${getSessionColorVariants(session).text}`}>
-                                {getSessionLabel(session)}
-                              </div>
+                                                          <div className="text-xs font-medium text-gray-900 truncate pr-2">
+                              {getSessionLabel(session)}
+                            </div>
                               <div className="text-xs text-gray-600 mt-0.5">
                                 {session.signups?.length || 0}/{session.capacity} účastníkov
                               </div>
