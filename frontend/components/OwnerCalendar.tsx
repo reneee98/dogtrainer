@@ -44,9 +44,12 @@ interface CalendarEvent {
   color: string;
 }
 
+type ViewMode = 'week' | 'month';
+
 const OwnerCalendar = () => {
   const { token } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
@@ -69,7 +72,6 @@ const OwnerCalendar = () => {
     
     try {
       setLoading(true);
-      // Fetch all sessions, not filtered by month for now
       const sessionsResponse = await apiRequest('/sessions', { token });
 
       console.log('Sessions response:', sessionsResponse);
@@ -94,7 +96,7 @@ const OwnerCalendar = () => {
 
       // Add sessions to events
       sessions.forEach((session: Session) => {
-        if (session.status === 'scheduled') { // Only show scheduled sessions
+        if (session.status === 'scheduled') {
           events.push({
             id: `session-${session.id}`,
             title: session.title,
@@ -150,7 +152,6 @@ const OwnerCalendar = () => {
     
     if (event.type === 'session' && event.session) {
       try {
-        // Fetch full session details
         const response = await apiRequest(`/sessions/${event.session.id}`, { token });
         if (response.success) {
           setSelectedSession(response.data.session || response.data);
@@ -182,7 +183,7 @@ const OwnerCalendar = () => {
         setShowSessionModal(false);
         setBookingNotes('');
         setSpecialRequirements('');
-        fetchEvents(); // Refresh events
+        fetchEvents();
       } else {
         alert(response.message || 'Chyba pri prihlasovaní na tréning.');
       }
@@ -212,13 +213,14 @@ const OwnerCalendar = () => {
         alert('Úspešne ste sa pridali na čakaciu listinu!');
         setShowSessionModal(false);
         setBookingNotes('');
-        fetchEvents(); // Refresh events
+        setSpecialRequirements('');
+        fetchEvents();
       } else {
-        alert(response.message || 'Chyba pri pridávaní na čakaciu listinu.');
+        alert(response.message || 'Chyba pri pridaní na čakaciu listinu.');
       }
     } catch (error) {
       console.error('Error joining waitlist:', error);
-      alert('Chyba pri pridávaní na čakaciu listinu.');
+      alert('Chyba pri pridaní na čakaciu listinu.');
     } finally {
       setIsBooking(false);
     }
@@ -230,39 +232,62 @@ const OwnerCalendar = () => {
   };
 
   const isUserSignedUp = (session: Session): boolean => {
-    if (!dogs.length) return false;
-    const userDogIds = dogs.map(dog => dog.id);
     return session.signups?.some(signup => 
-      userDogIds.includes(signup.dog_id) && ['pending', 'approved'].includes(signup.status)
+      signup.user_id === token && (signup.status === 'pending' || signup.status === 'approved')
     ) || false;
   };
 
   const isUserOnWaitlist = (session: Session): boolean => {
-    if (!dogs.length) return false;
-    const userDogIds = dogs.map(dog => dog.id);
-    return session.waitlist?.some(waitlist => 
-      userDogIds.includes(waitlist.dog_id)
-    ) || false;
+    return session.waitlist?.some(waitlist => waitlist.user_id === token) || false;
   };
 
+  // Week view functions
+  const getWeekDays = (date: Date) => {
+    const week = [];
+    const startOfWeek = new Date(date);
+    // Get Monday as start of week (Monday = 1, Sunday = 0)
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+
+    for (let i = 0; i < 7; i++) {
+      const weekDay = new Date(startOfWeek);
+      weekDay.setDate(startOfWeek.getDate() + i);
+      week.push(weekDay);
+    }
+    return week;
+  };
+
+  // Month view functions
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay());
     
+    // Start from Monday
+    const firstDayOfWeek = firstDay.getDay();
+    const mondayOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+    startDate.setDate(firstDay.getDate() - mondayOffset);
+
     const days = [];
-    for (let i = 0; i < 42; i++) {
-      days.push(new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000));
+    const totalDays = 42; // 6 weeks × 7 days
+
+    for (let i = 0; i < totalDays; i++) {
+      const day = new Date(startDate);
+      day.setDate(startDate.getDate() + i);
+      days.push(day);
     }
+
     return days;
   };
 
   const getEventsForDate = (date: Date) => {
-    const dateStr = date.toDateString();
-    return events.filter(event => event.start.toDateString() === dateStr);
+    return events.filter(event => {
+      const eventDate = new Date(event.start);
+      return eventDate.toDateString() === date.toDateString();
+    });
   };
 
   const formatTime = (date: string) => {
@@ -281,57 +306,121 @@ const OwnerCalendar = () => {
     });
   };
 
-  const previousMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  const previousPeriod = () => {
+    if (viewMode === 'week') {
+      const newDate = new Date(currentDate);
+      newDate.setDate(currentDate.getDate() - 7);
+      setCurrentDate(newDate);
+    } else {
+      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    }
   };
 
-  const nextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  const nextPeriod = () => {
+    if (viewMode === 'week') {
+      const newDate = new Date(currentDate);
+      newDate.setDate(currentDate.getDate() + 7);
+      setCurrentDate(newDate);
+    } else {
+      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    }
   };
 
-  const days = getDaysInMonth(currentDate);
-  const monthNames = [
-    'Január', 'Február', 'Marec', 'Apríl', 'Máj', 'Jún',
-    'Júl', 'August', 'September', 'Október', 'November', 'December'
-  ];
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
 
-  return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      {/* Calendar Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">
-          {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-        </h2>
-        <div className="flex space-x-2">
-          <button
-            onClick={previousMonth}
-            className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            ← Predchádzajúci
-          </button>
-          <button
-            onClick={nextMonth}
-            className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            Nasledujúci →
-          </button>
-        </div>
+  const getCalendarTitle = () => {
+    if (viewMode === 'week') {
+      const weekDays = getWeekDays(currentDate);
+      const startDate = weekDays[0];
+      const endDate = weekDays[6];
+      
+      if (startDate.getMonth() === endDate.getMonth()) {
+        return `${startDate.getDate()}. - ${endDate.getDate()}. ${startDate.toLocaleDateString('sk-SK', { month: 'long', year: 'numeric' })}`;
+      } else {
+        return `${startDate.toLocaleDateString('sk-SK', { day: 'numeric', month: 'short' })} - ${endDate.toLocaleDateString('sk-SK', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+      }
+    } else {
+      return currentDate.toLocaleDateString('sk-SK', { month: 'long', year: 'numeric' });
+    }
+  };
+
+  const renderWeekView = () => {
+    const weekDays = getWeekDays(currentDate);
+    const dayNames = ['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota', 'Nedeľa'];
+    
+    return (
+      <div className="grid grid-cols-7 gap-1">
+        {/* Header */}
+        {dayNames.map((dayName, index) => {
+          const day = weekDays[index];
+          const isToday = day.toDateString() === new Date().toDateString();
+          
+          return (
+            <div key={dayName} className="p-3 text-center bg-gray-50 border-b-2 border-gray-200">
+              <div className="font-semibold text-gray-700">{dayName}</div>
+              <div className={`text-lg font-bold ${isToday ? 'text-blue-600' : 'text-gray-900'}`}>
+                {day.getDate()}
+              </div>
+            </div>
+          );
+        })}
+        
+        {/* Events */}
+        {weekDays.map((day, index) => {
+          const dayEvents = getEventsForDate(day);
+          const isToday = day.toDateString() === new Date().toDateString();
+          
+          return (
+            <div
+              key={index}
+              className={`min-h-[300px] p-3 border border-gray-100 ${
+                isToday ? 'bg-blue-50 border-blue-200' : 'bg-white'
+              }`}
+            >
+              <div className="space-y-2">
+                {dayEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    className={`p-2 rounded cursor-pointer hover:opacity-80 transition-opacity border ${event.color}`}
+                    onClick={() => handleEventClick(event)}
+                  >
+                    <div className="font-medium text-sm truncate">{event.title}</div>
+                    <div className="text-xs">
+                      {formatTime(event.start.toISOString())} - {formatTime(event.end.toISOString())}
+                    </div>
+                    {event.session && (
+                      <div className="text-xs opacity-75">
+                        {event.session.location}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
+    );
+  };
 
-      {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-1 mb-4">
-        {['Ne', 'Po', 'Ut', 'St', 'Št', 'Pi', 'So'].map(day => (
-          <div key={day} className="p-2 text-center font-semibold text-gray-600 bg-gray-50">
-            {day}
-          </div>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+  const renderMonthView = () => {
+    const days = getDaysInMonth(currentDate);
+    const dayNames = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
+    
+    return (
+      <>
+        {/* Header */}
+        <div className="grid grid-cols-7 gap-1 mb-4">
+          {dayNames.map(day => (
+            <div key={day} className="p-2 text-center font-semibold text-gray-600 bg-gray-50">
+              {day}
+            </div>
+          ))}
         </div>
-      ) : (
+        
+        {/* Days */}
         <div className="grid grid-cols-7 gap-1">
           {days.map((day, index) => {
             const dayEvents = getEventsForDate(day);
@@ -369,6 +458,92 @@ const OwnerCalendar = () => {
             );
           })}
         </div>
+      </>
+    );
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-6">
+      {/* Calendar Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">
+          {getCalendarTitle()}
+        </h2>
+        <div className="flex items-center space-x-3">
+          {/* View Mode Toggle */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('week')}
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                viewMode === 'week' 
+                  ? 'bg-white text-gray-900 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Týždeň
+            </button>
+            <button
+              onClick={() => setViewMode('month')}
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                viewMode === 'month' 
+                  ? 'bg-white text-gray-900 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Mesiac
+            </button>
+          </div>
+          
+          {/* Navigation */}
+          <div className="flex space-x-2">
+            <button
+              onClick={previousPeriod}
+              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              ← Predchádzajúci
+            </button>
+            <button
+              onClick={goToToday}
+              className="px-3 py-2 text-sm bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg transition-colors"
+            >
+              Dnes
+            </button>
+            <button
+              onClick={nextPeriod}
+              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              Nasledujúci →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Loading State */}
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+        </div>
+      ) : (
+        <>
+          {/* Calendar Content */}
+          {viewMode === 'week' ? renderWeekView() : renderMonthView()}
+          
+          {/* Legend */}
+          <div className="flex justify-center space-x-6 mt-6 text-sm">
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
+              <span>Individuálny tréning</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
+              <span>Skupinový tréning</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 bg-purple-100 border border-purple-300 rounded"></div>
+              <span>Jasle</span>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Session Detail Modal */}
