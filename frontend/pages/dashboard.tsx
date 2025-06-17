@@ -5,6 +5,7 @@ import TrainerDashboard from '../components/TrainerDashboard';
 import ScheduleManagement from '../components/ScheduleManagement';
 import OwnerCalendar from '../components/OwnerCalendar';
 import SessionsListTrainer from '../components/SessionsListTrainer';
+import TrainerCalendar from '../components/TrainerCalendar';
 import { 
   FaDog, 
   FaCalendarAlt, 
@@ -288,15 +289,12 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Trainer Schedule */}
+          {/* Trainer Schedule - Calendar View */}
           {activeSection === 'schedule' && user.role === 'trainer' && (
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Môj rozvrh</h2>
-              <SessionsListTrainer />
-            </div>
+            <TrainerCalendar />
           )}
 
-          {/* Trainer Sessions */}
+          {/* Trainer Sessions - List View */}
           {activeSection === 'sessions' && user.role === 'trainer' && (
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Lekcie</h2>
