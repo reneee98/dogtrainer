@@ -620,17 +620,7 @@ const TrainerCalendar = () => {
                 key={index}
                 onClick={() => {
                   if (!isCurrentMonthDay) return;
-                  
-                  // On mobile, select date for session list
-                  if (window.innerWidth < 640) {
-                    setSelectedDate(date);
-                  } else if (daySessions.length > 0) {
-                    // On desktop, show modal for first session
-                    handleSessionClick(daySessions[0]);
-                  } else {
-                    // No sessions, create new one
-                    handleCreateSessionClick(date);
-                  }
+                  setSelectedDate(date);
                 }}
                 className={`
                   h-12 sm:h-16 lg:h-20 relative flex flex-col items-center justify-center group
@@ -720,9 +710,9 @@ const TrainerCalendar = () => {
           })}
         </div>
 
-        {/* Mobile: Selected date sessions list */}
+        {/* Selected date sessions list (always visible if selectedDate) */}
         {selectedDate && (
-          <div className="sm:hidden bg-white border-t border-gray-100">
+          <div className="bg-white border-t border-gray-100">
             <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium text-gray-900">
