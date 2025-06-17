@@ -89,6 +89,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{session}/signup', [SessionController::class, 'cancelSignup']);
         Route::post('/{session}/waitlist', [SessionController::class, 'joinWaitlist']);
         Route::delete('/{session}/waitlist', [SessionController::class, 'leaveWaitlist']);
+        
+        // Session signup management (for trainers)
+        Route::put('/{session}/signups/{signup}/approve', [SessionController::class, 'approveSignup']);
+        Route::put('/{session}/signups/{signup}/reject', [SessionController::class, 'rejectSignup']);
+        Route::get('/{session}/signups', [SessionController::class, 'getSessionSignups']);
     });
 
     // Daycare schedules management (trainers only)
@@ -125,6 +130,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{id}/status', [TrainerClientController::class, 'updateStatus']);
         Route::get('/pending-requests', [TrainerClientController::class, 'pendingRequests']);
         Route::delete('/{id}', [TrainerClientController::class, 'destroy']);
+    });
+
+    // Notifications management
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationController::class, 'index']);
+        Route::put('/{notification}/read', [NotificationController::class, 'markAsRead']);
+        Route::put('/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+        Route::delete('/{notification}', [NotificationController::class, 'destroy']);
     });
 
     // Trainer routes

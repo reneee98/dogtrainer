@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import TrainerDashboard from '../components/TrainerDashboard';
 import ScheduleManagement from '../components/ScheduleManagement';
+import OwnerCalendar from '../components/OwnerCalendar';
 import { 
   FaDog, 
   FaCalendarAlt, 
@@ -274,56 +275,16 @@ export default function Dashboard() {
           {activeSection === 'bookings' && user.role === 'owner' && (
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Rezervácie</h2>
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="text-center py-8">
-                  <FaCalendarAlt className="mx-auto text-4xl text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Moje rezervácie</h3>
-                  <p className="text-gray-600 mb-4">Zobrazte a spravujte svoje rezervácie tréningov.</p>
-                  <button
-                    onClick={() => alert('Rezervácie budú čoskoro dostupné!')}
-                    className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg flex items-center mx-auto"
-                  >
-                    <FaCalendarAlt className="mr-2" />
-                    Nová rezervácia
-                  </button>
-                </div>
-              </div>
+              <OwnerCalendar />
             </div>
           )}
 
           {/* Sessions */}
-          {(activeSection === 'sessions' || activeSection === 'schedule') && (
-            <>
-              {user.role === 'trainer' && activeSection === 'schedule' ? (
-                <ScheduleManagement />
-              ) : (
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                    {user.role === 'owner' ? 'Skupinové lekcie' : 'Lekcie'}
-                  </h2>
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div className="text-center py-8">
-                      <FaUsers className="mx-auto text-4xl text-gray-400 mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        {user.role === 'owner' ? 'Skupinové aktivity' : 'Správa relácií'}
-                      </h3>
-                      <p className="text-gray-600 mb-4">
-                        {user.role === 'owner' 
-                          ? 'Prihláste sa na skupinové lekcie a aktivity.'
-                          : 'Spravujte svoje individuálne lekcie.'}
-                      </p>
-                      <button
-                        onClick={() => alert('Lekcie budú čoskoro dostupné!')}
-                        className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg flex items-center mx-auto"
-                      >
-                        <FaUsers className="mr-2" />
-                        {user.role === 'owner' ? 'Prihlásiť sa' : 'Vytvoriť lekciu'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
+          {activeSection === 'sessions' && user.role === 'owner' && (
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Skupinové lekcie</h2>
+              <OwnerCalendar />
+            </div>
           )}
 
           {/* Daycare */}

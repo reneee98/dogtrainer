@@ -654,4 +654,213 @@ class SessionController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get signups for a session (for trainers).
+     */
+    public function getSessionSignups(Request $request, string $id): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user->isTrainer()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only trainers can view session signups',
+            ], 403);
+        }
+
+        try {
+            $session = Session::find($id);
+
+            if (!$session) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Session not found',
+                ], 404);
+            }
+
+            if ($session->trainer_id !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can only view signups for your own sessions',
+                ], 403);
+            }
+
+            $signups = $session->signups()
+                ->with(['dog.owner'])
+                ->orderBy('signed_up_at')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'signups' => $signups,
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve signups',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Approve a session signup (for trainers).
+     */
+    public function approveSignup(Request $request, string $sessionId, string $signupId): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user->isTrainer()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only trainers can approve signups',
+            ], 403);
+        }
+
+        try {
+            $session = Session::find($sessionId);
+            
+            if (!$session) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Session not found',
+                ], 404);
+            }
+
+            if ($session->trainer_id !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can only approve signups for your own sessions',
+                ], 403);
+            }
+
+            $signup = SessionSignup::find($signupId);
+            
+            if (!$signup || $signup->session_id !== $sessionId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Signup not found',
+                ], 404);
+            }
+
+            if ($signup->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Can only approve pending signups',
+                ], 422);
+            }
+
+            // Check if session still has capacity
+            $approvedCount = $session->signups()->approved()->count();
+            if ($approvedCount >= $session->capacity) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Session is at full capacity',
+                ], 422);
+            }
+
+            $signup->approve($user->id);
+
+            // TODO: Send notification to owner about approval
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Signup approved successfully',
+                'data' => [
+                    'signup' => $signup->fresh()->load(['dog.owner']),
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to approve signup',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Reject a session signup (for trainers).
+     */
+    public function rejectSignup(Request $request, string $sessionId, string $signupId): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user->isTrainer()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only trainers can reject signups',
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'rejection_reason' => 'nullable|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation errors',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $session = Session::find($sessionId);
+            
+            if (!$session) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Session not found',
+                ], 404);
+            }
+
+            if ($session->trainer_id !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can only reject signups for your own sessions',
+                ], 403);
+            }
+
+            $signup = SessionSignup::find($signupId);
+            
+            if (!$signup || $signup->session_id !== $sessionId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Signup not found',
+                ], 404);
+            }
+
+            if ($signup->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Can only reject pending signups',
+                ], 422);
+            }
+
+            $signup->reject($request->rejection_reason);
+
+            // TODO: Send notification to owner about rejection
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Signup rejected successfully',
+                'data' => [
+                    'signup' => $signup->fresh()->load(['dog.owner']),
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to reject signup',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 } 

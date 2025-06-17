@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '../contexts/AuthContext';
 import OnboardingWizard from '../components/OnboardingWizard';
 import TrainerDashboard from '../components/TrainerDashboard';
-import CalendarView from '../components/CalendarView';
+import OwnerCalendar from '../components/OwnerCalendar';
 import DogsList from '../components/DogsList';
 import ChatWidget from '../components/ChatWidget';
 import { 
@@ -336,7 +336,7 @@ export default function Home() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-6">Môj kalendár</h2>
-                  <CalendarView />
+                  <OwnerCalendar />
                 </div>
                 <div>
                   <DogsList />
