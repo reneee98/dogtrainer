@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
+import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface Dog {
   id: string;
@@ -34,100 +35,54 @@ interface Session {
   waitlist?: any[];
 }
 
-interface CalendarEvent {
-  id: string;
-  title: string;
-  start: Date;
-  end: Date;
-  type: 'session' | 'daycare';
-  session?: Session;
-  color: string;
-}
-
 type ViewMode = 'week' | 'month';
 
 const OwnerCalendar = () => {
   const { token } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('week');
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [selectedDogId, setSelectedDogId] = useState<string>('');
   const [bookingNotes, setBookingNotes] = useState('');
-  const [specialRequirements, setSpecialRequirements] = useState('');
   const [isBooking, setIsBooking] = useState(false);
 
   useEffect(() => {
     if (token) {
-      fetchEvents();
+      fetchSessions();
       fetchUserDogs();
     }
   }, [currentDate, token]);
 
-  const fetchEvents = async () => {
+  const fetchSessions = async () => {
     if (!token) return;
     
     try {
       setLoading(true);
-      const sessionsResponse = await apiRequest('/sessions', { token });
+      const response = await apiRequest('/sessions', { token });
 
-      console.log('Sessions response:', sessionsResponse);
-
-      const events: CalendarEvent[] = [];
-
-      // Handle different response formats
-      let sessions = [];
-      if (sessionsResponse.success) {
-        if (Array.isArray(sessionsResponse.data)) {
-          sessions = sessionsResponse.data;
-        } else if (sessionsResponse.data?.sessions && Array.isArray(sessionsResponse.data.sessions)) {
-          sessions = sessionsResponse.data.sessions;
-        } else if (sessionsResponse.data?.data && Array.isArray(sessionsResponse.data.data)) {
-          sessions = sessionsResponse.data.data;
+      let sessionData = [];
+      if (response.success) {
+        if (Array.isArray(response.data)) {
+          sessionData = response.data;
+        } else if (response.data?.data && Array.isArray(response.data.data)) {
+          sessionData = response.data.data;
         }
-      } else if (Array.isArray(sessionsResponse)) {
-        sessions = sessionsResponse;
       }
 
-      console.log('Processed sessions:', sessions);
+      // Filter out daycare sessions and only show scheduled sessions
+      const filteredSessions = sessionData.filter((session: Session) => 
+        session.status === 'scheduled' && session.session_type !== 'daycare'
+      );
 
-      // Add sessions to events
-      sessions.forEach((session: Session) => {
-        if (session.status === 'scheduled') {
-          events.push({
-            id: `session-${session.id}`,
-            title: session.title,
-            start: new Date(session.start_time),
-            end: new Date(session.end_time),
-            type: 'session',
-            session,
-            color: getSessionColor(session.session_type)
-          });
-        }
-      });
-
-      console.log('Calendar events:', events);
-      setEvents(events);
+      setSessions(filteredSessions);
     } catch (error) {
-      console.error('Error fetching events:', error);
+      console.error('Error fetching sessions:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getSessionColor = (sessionType: string): string => {
-    switch (sessionType) {
-      case 'individual':
-        return 'bg-blue-100 border-blue-300 text-blue-800';
-      case 'group':
-        return 'bg-green-100 border-green-300 text-green-800';
-      case 'daycare':
-        return 'bg-purple-100 border-purple-300 text-purple-800';
-      default:
-        return 'bg-gray-100 border-gray-300 text-gray-800';
     }
   };
 
@@ -147,20 +102,9 @@ const OwnerCalendar = () => {
     }
   };
 
-  const handleEventClick = async (event: CalendarEvent) => {
-    if (!token) return;
-    
-    if (event.type === 'session' && event.session) {
-      try {
-        const response = await apiRequest(`/sessions/${event.session.id}`, { token });
-        if (response.success) {
-          setSelectedSession(response.data.session || response.data);
-          setShowSessionModal(true);
-        }
-      } catch (error) {
-        console.error('Error fetching session details:', error);
-      }
-    }
+  const handleSessionClick = (session: Session) => {
+    setSelectedSession(session);
+    setShowSessionModal(true);
   };
 
   const handleBookSession = async () => {
@@ -173,8 +117,7 @@ const OwnerCalendar = () => {
         token,
         body: JSON.stringify({
           dog_id: selectedDogId,
-          notes: bookingNotes,
-          special_requirements: specialRequirements
+          notes: bookingNotes
         })
       });
 
@@ -182,8 +125,7 @@ const OwnerCalendar = () => {
         alert('Úspešne ste sa prihlásili na tréning! Čakáte na schválenie od trénera.');
         setShowSessionModal(false);
         setBookingNotes('');
-        setSpecialRequirements('');
-        fetchEvents();
+        fetchSessions();
       } else {
         alert(response.message || 'Chyba pri prihlasovaní na tréning.');
       }
@@ -195,115 +137,51 @@ const OwnerCalendar = () => {
     }
   };
 
-  const handleJoinWaitlist = async () => {
-    if (!selectedSession || !selectedDogId || !token) return;
-    
-    setIsBooking(true);
-    try {
-      const response = await apiRequest(`/sessions/${selectedSession.id}/waitlist`, {
-        method: 'POST',
-        token,
-        body: JSON.stringify({
-          dog_id: selectedDogId,
-          notes: bookingNotes
-        })
-      });
-
-      if (response.success) {
-        alert('Úspešne ste sa pridali na čakaciu listinu!');
-        setShowSessionModal(false);
-        setBookingNotes('');
-        setSpecialRequirements('');
-        fetchEvents();
-      } else {
-        alert(response.message || 'Chyba pri pridaní na čakaciu listinu.');
-      }
-    } catch (error) {
-      console.error('Error joining waitlist:', error);
-      alert('Chyba pri pridaní na čakaciu listinu.');
-    } finally {
-      setIsBooking(false);
-    }
-  };
-
   const isSessionFull = (session: Session): boolean => {
-    const approvedSignups = session.signups?.filter(signup => signup.status === 'approved').length || 0;
-    return approvedSignups >= session.capacity;
+    return (session.available_spots || 0) <= 0;
   };
 
   const isUserSignedUp = (session: Session): boolean => {
     return session.signups?.some(signup => 
-      signup.user_id === token && (signup.status === 'pending' || signup.status === 'approved')
+      dogs.some(dog => dog.id === signup.dog_id)
     ) || false;
   };
 
-  const isUserOnWaitlist = (session: Session): boolean => {
-    return session.waitlist?.some(waitlist => waitlist.user_id === token) || false;
-  };
-
-  // Week view functions
-  const getWeekDays = (date: Date) => {
-    const week = [];
-    const startOfWeek = new Date(date);
-    // Get Monday as start of week (Monday = 1, Sunday = 0)
-    const day = startOfWeek.getDay();
-    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-    startOfWeek.setDate(diff);
-
-    for (let i = 0; i < 7; i++) {
-      const weekDay = new Date(startOfWeek);
-      weekDay.setDate(startOfWeek.getDate() + i);
-      week.push(weekDay);
-    }
-    return week;
-  };
-
-  // Month view functions
-  const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const startDate = new Date(firstDay);
-    
-    // Start from Monday
-    const firstDayOfWeek = firstDay.getDay();
-    const mondayOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-    startDate.setDate(firstDay.getDate() - mondayOffset);
-
-    const days = [];
-    const totalDays = 42; // 6 weeks × 7 days
-
-    for (let i = 0; i < totalDays; i++) {
-      const day = new Date(startDate);
-      day.setDate(startDate.getDate() + i);
-      days.push(day);
-    }
-
-    return days;
-  };
-
-  const getEventsForDate = (date: Date) => {
-    return events.filter(event => {
-      const eventDate = new Date(event.start);
-      return eventDate.toDateString() === date.toDateString();
+  const getSessionsForDate = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return sessions.filter(session => {
+      const sessionDate = new Date(session.start_time).toISOString().split('T')[0];
+      return sessionDate === dateStr;
     });
   };
 
-  const formatTime = (date: string) => {
-    return new Date(date).toLocaleTimeString('sk-SK', {
+  const formatTime = (dateStr: string) => {
+    return new Date(dateStr).toLocaleTimeString('sk-SK', {
       hour: '2-digit',
       minute: '2-digit'
     });
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('sk-SK', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+  const getSessionTypeColor = (type: string) => {
+    switch (type) {
+      case 'individual':
+        return 'bg-blue-500';
+      case 'group':
+        return 'bg-green-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  const getSessionTypeLabel = (type: string) => {
+    switch (type) {
+      case 'individual':
+        return 'Individuálny';
+      case 'group':
+        return 'Skupinový';
+      default:
+        return type;
+    }
   };
 
   const previousPeriod = () => {
@@ -330,377 +208,422 @@ const OwnerCalendar = () => {
     setCurrentDate(new Date());
   };
 
+  const getWeekDays = () => {
+    const week = [];
+    const startOfWeek = new Date(currentDate);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Start on Monday
+    startOfWeek.setDate(diff);
+
+    for (let i = 0; i < 7; i++) {
+      const weekDay = new Date(startOfWeek);
+      weekDay.setDate(startOfWeek.getDate() + i);
+      week.push(weekDay);
+    }
+    return week;
+  };
+
+  const getDaysInMonth = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    
+    const days = [];
+    for (let i = 0; i < 42; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      days.push(date);
+    }
+    return days;
+  };
+
+  const monthNames = [
+    'Január', 'Február', 'Marec', 'Apríl', 'Máj', 'Jún',
+    'Júl', 'August', 'September', 'Október', 'November', 'December'
+  ];
+
+  const dayNames = ['Ne', 'Po', 'Ut', 'St', 'Št', 'Pi', 'So'];
+  const weekDayNames = ['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota', 'Nedeľa'];
+
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
+  const isCurrentMonth = (date: Date) => {
+    return date.getMonth() === currentDate.getMonth();
+  };
+
   const getCalendarTitle = () => {
     if (viewMode === 'week') {
-      const weekDays = getWeekDays(currentDate);
+      const weekDays = getWeekDays();
       const startDate = weekDays[0];
       const endDate = weekDays[6];
       
       if (startDate.getMonth() === endDate.getMonth()) {
-        return `${startDate.getDate()}. - ${endDate.getDate()}. ${startDate.toLocaleDateString('sk-SK', { month: 'long', year: 'numeric' })}`;
+        return `${startDate.getDate()}. - ${endDate.getDate()}. ${monthNames[startDate.getMonth()]} ${startDate.getFullYear()}`;
       } else {
-        return `${startDate.toLocaleDateString('sk-SK', { day: 'numeric', month: 'short' })} - ${endDate.toLocaleDateString('sk-SK', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+        return `${startDate.getDate()}. ${monthNames[startDate.getMonth()]} - ${endDate.getDate()}. ${monthNames[endDate.getMonth()]} ${endDate.getFullYear()}`;
       }
     } else {
-      return currentDate.toLocaleDateString('sk-SK', { month: 'long', year: 'numeric' });
+      return `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
     }
   };
 
   const renderWeekView = () => {
-    const weekDays = getWeekDays(currentDate);
-    const dayNames = ['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota', 'Nedeľa'];
-    
-    return (
-      <div className="grid grid-cols-7 gap-1">
-        {/* Header */}
-        {dayNames.map((dayName, index) => {
-          const day = weekDays[index];
-          const isToday = day.toDateString() === new Date().toDateString();
-          
-          return (
-            <div key={dayName} className="p-3 text-center bg-gray-50 border-b-2 border-gray-200">
-              <div className="font-semibold text-gray-700">{dayName}</div>
-              <div className={`text-lg font-bold ${isToday ? 'text-blue-600' : 'text-gray-900'}`}>
-                {day.getDate()}
-              </div>
-            </div>
-          );
-        })}
-        
-        {/* Events */}
-        {weekDays.map((day, index) => {
-          const dayEvents = getEventsForDate(day);
-          const isToday = day.toDateString() === new Date().toDateString();
-          
-          return (
-            <div
-              key={index}
-              className={`min-h-[300px] p-3 border border-gray-100 ${
-                isToday ? 'bg-blue-50 border-blue-200' : 'bg-white'
-              }`}
-            >
-              <div className="space-y-2">
-                {dayEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className={`p-2 rounded cursor-pointer hover:opacity-80 transition-opacity border ${event.color}`}
-                    onClick={() => handleEventClick(event)}
-                  >
-                    <div className="font-medium text-sm truncate">{event.title}</div>
-                    <div className="text-xs">
-                      {formatTime(event.start.toISOString())} - {formatTime(event.end.toISOString())}
-                    </div>
-                    {event.session && (
-                      <div className="text-xs opacity-75">
-                        {event.session.location}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
+    const weekDays = getWeekDays();
 
-  const renderMonthView = () => {
-    const days = getDaysInMonth(currentDate);
-    const dayNames = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
-    
     return (
-      <>
-        {/* Header */}
-        <div className="grid grid-cols-7 gap-1 mb-4">
-          {dayNames.map(day => (
-            <div key={day} className="p-2 text-center font-semibold text-gray-600 bg-gray-50">
-              {day}
-            </div>
-          ))}
-        </div>
-        
-        {/* Days */}
+      <div className="space-y-2">
+        {/* Day headers */}
         <div className="grid grid-cols-7 gap-1">
-          {days.map((day, index) => {
-            const dayEvents = getEventsForDate(day);
-            const isCurrentMonth = day.getMonth() === currentDate.getMonth();
-            const isToday = day.toDateString() === new Date().toDateString();
+          {weekDayNames.map((dayName, index) => {
+            const day = weekDays[index];
+            const isTodayDay = isToday(day);
+
+            return (
+              <div key={dayName} className="p-4 text-center bg-gray-50 rounded-lg">
+                <div className="text-sm font-medium text-gray-600">{dayName}</div>
+                <div className={`text-2xl font-bold ${isTodayDay ? 'text-blue-600' : 'text-gray-900'}`}>
+                  {day.getDate()}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Sessions */}
+        <div className="grid grid-cols-7 gap-1">
+          {weekDays.map((day, index) => {
+            const daySessions = getSessionsForDate(day);
+            const isTodayDay = isToday(day);
 
             return (
               <div
                 key={index}
-                className={`min-h-[100px] p-2 border border-gray-100 ${
-                  isCurrentMonth ? 'bg-white' : 'bg-gray-50'
-                } ${isToday ? 'bg-blue-50 border-blue-200' : ''}`}
+                className={`
+                  min-h-[400px] p-3 rounded-lg border transition-all
+                  ${isTodayDay ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'}
+                `}
               >
-                <div className={`text-sm font-medium mb-1 ${
-                  isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
-                } ${isToday ? 'text-blue-600' : ''}`}>
-                  {day.getDate()}
-                </div>
-                
-                <div className="space-y-1">
-                  {dayEvents.map((event) => (
-                    <div
-                      key={event.id}
-                      className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 transition-opacity ${event.color}`}
-                      onClick={() => handleEventClick(event)}
+                <div className="space-y-2">
+                  {daySessions.map((session) => (
+                    <button
+                      key={session.id}
+                      onClick={() => handleSessionClick(session)}
+                      className={`
+                        w-full text-left p-3 rounded-lg transition-all hover:scale-105 cursor-pointer
+                        ${getSessionTypeColor(session.session_type)} text-white
+                      `}
                     >
-                      <div className="font-medium truncate">{event.title}</div>
-                      <div className="text-xs">
-                        {formatTime(event.start.toISOString())}
+                      <div className="font-medium text-sm">{session.title}</div>
+                      <div className="text-xs opacity-90">
+                        {formatTime(session.start_time)} - {formatTime(session.end_time)}
                       </div>
-                    </div>
+                      <div className="text-xs opacity-75">{session.location}</div>
+                      <div className="text-xs opacity-90 mt-1">
+                        {session.capacity - (session.available_spots || 0)}/{session.capacity} obsadené
+                      </div>
+                    </button>
                   ))}
                 </div>
               </div>
             );
           })}
         </div>
-      </>
+      </div>
     );
   };
 
+  const renderMonthView = () => {
+    return (
+      <div className="space-y-2">
+        {/* Day headers */}
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {dayNames.map((day) => (
+            <div key={day} className="h-8 flex items-center justify-center">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                {day}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Calendar days */}
+        <div className="grid grid-cols-7 gap-1">
+          {getDaysInMonth().map((date, index) => {
+            const daySessions = getSessionsForDate(date);
+            const isCurrentMonthDay = isCurrentMonth(date);
+            const isTodayDay = isToday(date);
+
+            return (
+              <div
+                key={index}
+                className={`
+                  min-h-[100px] p-2 border border-gray-50 rounded-lg transition-all hover:bg-gray-25
+                  ${!isCurrentMonthDay ? 'opacity-30' : ''}
+                  ${isTodayDay ? 'bg-blue-50 border-blue-200' : 'bg-white'}
+                `}
+              >
+                <div className={`
+                  text-sm font-medium mb-1
+                  ${isTodayDay ? 'text-blue-600' : isCurrentMonthDay ? 'text-gray-900' : 'text-gray-400'}
+                `}>
+                  {date.getDate()}
+                </div>
+                
+                <div className="space-y-1">
+                  {daySessions.slice(0, 3).map((session) => (
+                    <button
+                      key={session.id}
+                      onClick={() => handleSessionClick(session)}
+                      className={`
+                        w-full text-left px-2 py-1 rounded-md text-xs font-medium
+                        transition-all hover:scale-105 cursor-pointer
+                        ${getSessionTypeColor(session.session_type)} text-white
+                      `}
+                    >
+                      <div className="truncate">{session.title}</div>
+                      <div className="text-xs opacity-90">
+                        {formatTime(session.start_time)}
+                      </div>
+                    </button>
+                  ))}
+                  {daySessions.length > 3 && (
+                    <div className="text-xs text-gray-500 px-2">
+                      +{daySessions.length - 3} viac
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      {/* Calendar Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">
-          {getCalendarTitle()}
-        </h2>
-        <div className="flex items-center space-x-3">
-          {/* View Mode Toggle */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('week')}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                viewMode === 'week' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Týždeň
-            </button>
-            <button
-              onClick={() => setViewMode('month')}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                viewMode === 'month' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Mesiac
-            </button>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Header */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <h1 className="text-2xl font-semibold text-gray-900">
+                {getCalendarTitle()}
+              </h1>
+              <button
+                onClick={goToToday}
+                className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                Dnes
+              </button>
+            </div>
+            <div className="flex items-center space-x-4">
+              {/* View Mode Toggle */}
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('week')}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    viewMode === 'week' 
+                      ? 'bg-white text-gray-900 shadow-sm font-medium' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Týždeň
+                </button>
+                <button
+                  onClick={() => setViewMode('month')}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    viewMode === 'month' 
+                      ? 'bg-white text-gray-900 shadow-sm font-medium' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Mesiac
+                </button>
+              </div>
+              
+              {/* Navigation */}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={previousPeriod}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  <ChevronLeftIcon className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={nextPeriod}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  <ChevronRightIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
           </div>
-          
-          {/* Navigation */}
-          <div className="flex space-x-2">
-            <button
-              onClick={previousPeriod}
-              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-            >
-              ← Predchádzajúci
-            </button>
-            <button
-              onClick={goToToday}
-              className="px-3 py-2 text-sm bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg transition-colors"
-            >
-              Dnes
-            </button>
-            <button
-              onClick={nextPeriod}
-              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-            >
-              Nasledujúci →
-            </button>
+        </div>
+
+        {/* Calendar Content */}
+        <div className="p-6">
+          {viewMode === 'week' ? renderWeekView() : renderMonthView()}
+        </div>
+
+        {/* Legend */}
+        <div className="px-6 pb-6">
+          <div className="flex justify-center space-x-6 text-sm">
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 bg-blue-500 rounded"></div>
+              <span>Individuálny tréning</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 bg-green-500 rounded"></div>
+              <span>Skupinový tréning</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Loading State */}
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-        </div>
-      ) : (
-        <>
-          {/* Calendar Content */}
-          {viewMode === 'week' ? renderWeekView() : renderMonthView()}
-          
-          {/* Legend */}
-          <div className="flex justify-center space-x-6 mt-6 text-sm">
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
-              <span>Individuálny tréning</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
-              <span>Skupinový tréning</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-purple-100 border border-purple-300 rounded"></div>
-              <span>Jasle</span>
-            </div>
-          </div>
-        </>
-      )}
-
       {/* Session Detail Modal */}
       {showSessionModal && selectedSession && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-2xl font-bold text-gray-900">{selectedSession.title}</h3>
-              <button
-                onClick={() => setShowSessionModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Session Details */}
-            <div className="space-y-4 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h4 className="font-semibold text-gray-700 mb-2">Detaily tréningi</h4>
-                  <div className="space-y-2 text-sm">
-                    <p><span className="font-medium">Dátum:</span> {formatDate(selectedSession.start_time)}</p>
-                    <p><span className="font-medium">Čas:</span> {formatTime(selectedSession.start_time)} - {formatTime(selectedSession.end_time)}</p>
-                    <p><span className="font-medium">Miesto:</span> {selectedSession.location}</p>
-                    <p><span className="font-medium">Kapacita:</span> {selectedSession.capacity} psov</p>
-                    <p><span className="font-medium">Cena:</span> {selectedSession.price}€</p>
-                    <p><span className="font-medium">Typ:</span> {selectedSession.session_type}</p>
-                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    {selectedSession.title}
+                  </h3>
+                  <span className={`
+                    inline-block px-2 py-1 rounded-full text-xs font-medium mt-2
+                    ${selectedSession.session_type === 'individual' 
+                      ? 'bg-blue-100 text-blue-800' 
+                      : 'bg-green-100 text-green-800'}
+                  `}>
+                    {getSessionTypeLabel(selectedSession.session_type)}
+                  </span>
                 </div>
-                
+                <button
+                  onClick={() => setShowSessionModal(false)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
                 <div>
-                  <h4 className="font-semibold text-gray-700 mb-2">Tréner</h4>
-                  <div className="space-y-2 text-sm">
-                    <p><span className="font-medium">Meno:</span> {selectedSession.trainer.name}</p>
-                    <p><span className="font-medium">Email:</span> {selectedSession.trainer.email}</p>
-                  </div>
-                  
-                  <div className="mt-4">
-                    <h4 className="font-semibold text-gray-700 mb-2">Dostupnosť</h4>
-                    <div className="text-sm">
-                      <p>
-                        <span className="font-medium">Obsadené miesta:</span> {
-                          selectedSession.signups?.filter(signup => signup.status === 'approved').length || 0
-                        } / {selectedSession.capacity}
-                      </p>
-                      {isSessionFull(selectedSession) && (
-                        <p className="text-red-600 font-medium">Tréning je plný</p>
-                      )}
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Detaily</h4>
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <div className="flex justify-between">
+                      <span>Dátum:</span>
+                      <span className="font-medium">
+                        {new Date(selectedSession.start_time).toLocaleDateString('sk-SK')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Čas:</span>
+                      <span className="font-medium">
+                        {formatTime(selectedSession.start_time)} - {formatTime(selectedSession.end_time)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Miesto:</span>
+                      <span className="font-medium">{selectedSession.location}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Cena:</span>
+                      <span className="font-medium">{selectedSession.price}€</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Kapacita:</span>
+                      <span className="font-medium">
+                        {selectedSession.capacity - (selectedSession.available_spots || 0)}/{selectedSession.capacity}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Tréner:</span>
+                      <span className="font-medium">{selectedSession.trainer.name}</span>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {selectedSession.description && (
-                <div>
-                  <h4 className="font-semibold text-gray-700 mb-2">Popis</h4>
-                  <p className="text-sm text-gray-600">{selectedSession.description}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Booking Form */}
-            {!isUserSignedUp(selectedSession) && !isUserOnWaitlist(selectedSession) && (
-              <div className="border-t pt-4">
-                <h4 className="font-semibold text-gray-700 mb-4">
-                  {isSessionFull(selectedSession) ? 'Pridať sa na čakaciu listinu' : 'Prihlásiť sa na tréning'}
-                </h4>
-                
-                <div className="space-y-4">
+                {selectedSession.description && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Vyberte psa
-                    </label>
-                    <select
-                      value={selectedDogId}
-                      onChange={(e) => setSelectedDogId(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      {dogs.map(dog => (
-                        <option key={dog.id} value={dog.id}>
-                          {dog.name} ({dog.breed}, {dog.age} rokov)
-                        </option>
-                      ))}
-                    </select>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Popis</h4>
+                    <p className="text-sm text-gray-600">{selectedSession.description}</p>
                   </div>
+                )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Poznámky (voliteľné)
-                    </label>
-                    <textarea
-                      value={bookingNotes}
-                      onChange={(e) => setBookingNotes(e.target.value)}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="Napíšte poznámky pre trénera..."
-                    />
-                  </div>
-
-                  {!isSessionFull(selectedSession) && (
+                {!isUserSignedUp(selectedSession) && !isSessionFull(selectedSession) && (
+                  <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Špeciálne požiadavky (voliteľné)
+                        Vyberte psa
+                      </label>
+                      <select
+                        value={selectedDogId}
+                        onChange={(e) => setSelectedDogId(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        {dogs.map((dog) => (
+                          <option key={dog.id} value={dog.id}>
+                            {dog.name} ({dog.breed})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Poznámky (voliteľné)
                       </label>
                       <textarea
-                        value={specialRequirements}
-                        onChange={(e) => setSpecialRequirements(e.target.value)}
-                        rows={2}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="Napríklad: zdravotné problémy, strach z iných psov..."
+                        value={bookingNotes}
+                        onChange={(e) => setBookingNotes(e.target.value)}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Zadajte poznámky pre trénera..."
                       />
                     </div>
-                  )}
 
-                  <div className="flex space-x-3">
                     <button
-                      onClick={() => setShowSessionModal(false)}
-                      className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-                    >
-                      Zrušiť
-                    </button>
-                    <button
-                      onClick={isSessionFull(selectedSession) ? handleJoinWaitlist : handleBookSession}
+                      onClick={handleBookSession}
                       disabled={isBooking || !selectedDogId}
-                      className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors disabled:opacity-50"
+                      className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      {isBooking ? 'Spracováva sa...' : (
-                        isSessionFull(selectedSession) ? 'Pridať na čakaciu listinu' : 'Prihlásiť sa'
-                      )}
+                      {isBooking ? 'Prihlasuje sa...' : 'Prihlásiť sa na tréning'}
                     </button>
                   </div>
-                </div>
-              </div>
-            )}
+                )}
 
-            {/* Already signed up message */}
-            {isUserSignedUp(selectedSession) && (
-              <div className="border-t pt-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-blue-800 font-medium">
-                    Už ste prihlásený na tento tréning. Čakáte na schválenie od trénera.
-                  </p>
-                </div>
-              </div>
-            )}
+                {isUserSignedUp(selectedSession) && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-green-800 text-sm font-medium">
+                      ✓ Už ste prihlásený na tento tréning
+                    </p>
+                  </div>
+                )}
 
-            {/* Already on waitlist message */}
-            {isUserOnWaitlist(selectedSession) && (
-              <div className="border-t pt-4">
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-yellow-800 font-medium">
-                    Ste na čakacej listine pre tento tréning.
-                  </p>
-                </div>
+                {isSessionFull(selectedSession) && !isUserSignedUp(selectedSession) && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <p className="text-amber-800 text-sm font-medium">
+                      Tréning je plne obsadený
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
