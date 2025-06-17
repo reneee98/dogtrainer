@@ -493,8 +493,8 @@ const TrainerCalendar = () => {
 
     return (
       <div className="space-y-4">
-        <div className="flex justify-between items-center p-4">
-          <h2 className="text-lg font-semibold text-gray-900">Vaše tréningy</h2>
+        <div className="flex justify-between items-center px-1 mb-6">
+          <h2 className="text-xl font-bold text-gray-900">Nadchádzajúce tréningy</h2>
           <button
             onClick={() => handleCreateSessionClick(new Date())}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2"
@@ -504,56 +504,125 @@ const TrainerCalendar = () => {
           </button>
         </div>
 
-        {upcomingSessions.map((session) => (
-          <div
-            key={session.id}
-            onClick={() => handleSessionClick(session)}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 active:scale-[0.98] transition-transform cursor-pointer"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-2">
-                  <div className={`w-3 h-3 rounded-full ${getSessionColor(session)}`}></div>
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    {getSessionLabel(session)}
-                  </span>
-                  <span className="text-xs text-gray-400">•</span>
-                  <span className="text-xs text-gray-500">
-                    {getStatusLabel(session.status)}
-                  </span>
-                </div>
-                
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                  {session.title}
-                </h3>
-                
-                <div className="space-y-1 text-sm text-gray-600">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-medium">{formatRelativeDate(session.start_time)}</span>
-                    <span>•</span>
-                    <span>{formatTime(session.start_time)} - {formatTime(session.end_time)}</span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <span>📍 {session.location}</span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <span>👥 {session.signups?.length || 0}/{session.capacity} prihlásených</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex flex-col items-end space-y-2">
-                <div className="text-right">
-                  <div className="text-lg font-bold text-gray-900">
-                    {session.price}€
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* Table header */}
+        <div className="bg-gray-50 rounded-lg p-3 mb-2">
+          <div className="grid grid-cols-12 gap-3 text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <div className="col-span-3">Služba</div>
+            <div className="col-span-2">Dátum</div>
+            <div className="col-span-2">Čas</div>
+            <div className="col-span-2">Lokácia</div>
+            <div className="col-span-1">Účastníci</div>
+            <div className="col-span-1">Cena</div>
+            <div className="col-span-1">Akcie</div>
           </div>
-        ))}
+        </div>
+
+        {/* Table rows */}
+        <div className="space-y-1">
+          {upcomingSessions.map((session) => {
+            const colorVariants = getSessionColorVariants(session);
+            
+            return (
+              <div
+                key={session.id}
+                onClick={() => handleSessionClick(session)}
+                className={`
+                  bg-white rounded-lg border transition-all duration-200 cursor-pointer
+                  hover:shadow-md hover:bg-gray-50 active:scale-[0.99]
+                  ${colorVariants.border}
+                `}
+              >
+                <div className="grid grid-cols-12 gap-3 p-3 items-center">
+                  {/* Service */}
+                  <div className="col-span-3 flex items-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
+                    <div className="min-w-0">
+                      <div className={`text-sm font-medium truncate ${colorVariants.text}`}>
+                        {getSessionLabel(session)}
+                      </div>
+                      <div className={`text-xs px-1.5 py-0.5 rounded-full inline-block ${
+                        session.status === 'scheduled' ? 'bg-green-100 text-green-700' :
+                        session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {getStatusLabel(session.status)}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Date */}
+                  <div className="col-span-2">
+                    <div className="text-sm font-medium text-gray-900">
+                      {formatRelativeDate(session.start_time)}
+                    </div>
+                  </div>
+                  
+                  {/* Time */}
+                  <div className="col-span-2">
+                    <div className="text-sm text-gray-600">
+                      {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                    </div>
+                  </div>
+                  
+                  {/* Location */}
+                  <div className="col-span-2">
+                    <div className="text-sm text-gray-600 truncate">
+                      {session.location}
+                    </div>
+                  </div>
+                  
+                  {/* Participants */}
+                  <div className="col-span-1">
+                    <div className="text-sm text-gray-600">
+                      {session.signups?.length || 0}/{session.capacity}
+                    </div>
+                    {session.capacity > 0 && (
+                      <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
+                        <div 
+                          className={`h-1 rounded-full ${getSessionColor(session)}`}
+                          style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Price */}
+                  <div className="col-span-1">
+                    <div className="text-sm font-semibold text-gray-900">
+                      {session.price}€
+                    </div>
+                  </div>
+                  
+                  {/* Actions */}
+                  <div className="col-span-1">
+                    <div className="flex space-x-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditSession(session);
+                        }}
+                        className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        title="Upraviť"
+                      >
+                        <PencilIcon className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSession(session.id);
+                        }}
+                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="Zmazať"
+                      >
+                        <TrashIcon className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   };
