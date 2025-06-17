@@ -6,6 +6,7 @@ import ScheduleManagement from '../components/ScheduleManagement';
 import OwnerCalendar from '../components/OwnerCalendar';
 import SessionsListTrainer from '../components/SessionsListTrainer';
 import TrainerCalendar from '../components/TrainerCalendar';
+import ServicesManagement from '../components/ServicesManagement';
 import { 
   FaDog, 
   FaCalendarAlt, 
@@ -188,7 +189,7 @@ export default function Dashboard() {
         { id: 'overview', label: 'Prehľad', icon: <FaHome /> },
         { id: 'schedule', label: 'Môj rozvrh', icon: <FaCalendarAlt /> },
         { id: 'clients', label: 'Klienti', icon: <FaUsers /> },
-        { id: 'sessions', label: 'Tréningy', icon: <FaUserTie /> },
+        { id: 'services', label: 'Služby', icon: <FaCogs /> },
         { id: 'daycare', label: 'Denné pobyty', icon: <FaPaw /> },
         { id: 'reviews', label: 'Hodnotenia', icon: <FaStar /> },
         { id: 'notifications', label: 'Notifikácie', icon: <FaBell /> },
@@ -446,11 +447,11 @@ export default function Dashboard() {
               <TrainerCalendar />
             )}
 
-            {/* Trainer Sessions - List View */}
-            {activeSection === 'sessions' && user.role === 'trainer' && (
+            {/* Trainer Services - Management View */}
+            {activeSection === 'services' && user.role === 'trainer' && (
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">Tréningy</h2>
-                <SessionsListTrainer />
+                <h2 className="text-2xl font-bold text-gray-900 mb-3">Služby</h2>
+                <ServicesManagement />
               </div>
             )}
 
@@ -480,7 +481,7 @@ export default function Dashboard() {
             )}
 
             {/* Other sections */}
-            {!['overview', 'dogs', 'calendar', 'sessions', 'schedule', 'daycare'].includes(activeSection) && (
+            {!['overview', 'dogs', 'calendar', 'sessions', 'schedule', 'services', 'daycare'].includes(activeSection) && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
                 <FaCogs className="mx-auto text-4xl text-gray-400 mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">

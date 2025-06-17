@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\DaycareController;
 use App\Http\Controllers\Api\TrainerClientController;
+use App\Http\Controllers\Api\ServiceTemplateController;
 
 /*
 |--------------------------------------------------------------------------
@@ -138,6 +139,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{notification}/read', [NotificationController::class, 'markAsRead']);
         Route::put('/mark-all-read', [NotificationController::class, 'markAllAsRead']);
         Route::delete('/{notification}', [NotificationController::class, 'destroy']);
+    });
+
+    // Service Templates management (trainers only)
+    Route::prefix('service-templates')->middleware('role:trainer')->group(function () {
+        Route::get('/', [ServiceTemplateController::class, 'index']);
+        Route::post('/', [ServiceTemplateController::class, 'store']);
+        Route::get('/{serviceTemplate}', [ServiceTemplateController::class, 'show']);
+        Route::put('/{serviceTemplate}', [ServiceTemplateController::class, 'update']);
+        Route::delete('/{serviceTemplate}', [ServiceTemplateController::class, 'destroy']);
     });
 
     // Trainer routes

@@ -137,4 +137,13 @@ export const reviewApi = {
     apiRequest(`/reviews/${id}/reply`, { token, method: 'POST', body: { reply } }),
   trainerStats: (token: string, trainerId: number) => 
     apiRequest(`/reviews/trainer/${trainerId}/stats`, { token }),
+};
+
+// Service Template API
+export const serviceTemplateApi = {
+  list: (token: string) => apiRequest('/service-templates', { token }),
+  create: (token: string, data: any) => apiRequest('/service-templates', { token, method: 'POST', body: data }),
+  update: (token: string, id: number, data: any) => apiRequest(`/service-templates/${id}`, { token, method: 'PUT', body: data }),
+  delete: (token: string, id: number) => apiRequest(`/service-templates/${id}`, { token, method: 'DELETE' }),
+  show: (token: string, id: number) => apiRequest(`/service-templates/${id}`, { token }),
 }; 

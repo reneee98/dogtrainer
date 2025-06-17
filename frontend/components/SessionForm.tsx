@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
-import { apiRequest } from '../lib/api';
+import { apiRequest, serviceTemplateApi } from '../lib/api';
+import { ServiceTemplate } from './ServicesManagement';
 
 const sessionSchema = z.object({
   title: z.string().min(3, 'Názov musí mať aspoň 3 znaky'),
@@ -51,6 +52,8 @@ const calculateDuration = (startTime: string, endTime: string): number => {
 export default function SessionForm({ session, date, onClose, onSuccess }: SessionFormProps) {
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
+  const [serviceTemplates, setServiceTemplates] = useState<ServiceTemplate[]>([]);
 
   // Helper function to format date for datetime-local input
   const formatDateForInput = (date: Date): string => {
@@ -75,7 +78,7 @@ export default function SessionForm({ session, date, onClose, onSuccess }: Sessi
     return '';
   };
 
-  const { register, handleSubmit, formState: { errors }, watch } = useForm<SessionFormData>({
+  const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<SessionFormData>({
     resolver: zodResolver(sessionSchema),
     defaultValues: {
       title: session?.title || '',
@@ -143,6 +146,39 @@ export default function SessionForm({ session, date, onClose, onSuccess }: Sessi
     }
   };
 
+  // Načítanie service templates pri načítaní komponenty
+  useEffect(() => {
+    const loadServiceTemplates = async () => {
+      if (!token) return;
+      
+      try {
+        const response = await serviceTemplateApi.list(token);
+        if (response.success) {
+          setServiceTemplates(response.data);
+        }
+      } catch (error) {
+        console.error('Error loading service templates:', error);
+      }
+    };
+
+    loadServiceTemplates();
+  }, [token]);
+
+  // Predvyplnenie podľa šablóny
+  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const templateId = e.target.value ? parseInt(e.target.value) : null;
+    const template = serviceTemplates.find(t => t.id === templateId);
+    setSelectedTemplateId(templateId);
+    if (template) {
+      setValue('title', template.name);
+      // Prednastavíme typ na skupinový ak sa jedná o template (väčšinou budú skupinové)
+      setValue('session_type', 'group');
+      setValue('duration', template.duration);
+      setValue('price', template.price);
+      setValue('description', template.description || '');
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -159,6 +195,17 @@ export default function SessionForm({ session, date, onClose, onSuccess }: Sessi
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+          {/* Výber šablóny služby */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Šablóna služby</label>
+            <select value={selectedTemplateId || ''} onChange={handleTemplateChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+              <option value="">Vyberte šablónu (voliteľné)</option>
+              {serviceTemplates.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Názov relácie</label>
             <input

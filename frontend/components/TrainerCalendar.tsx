@@ -1,20 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
-import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PlusIcon, CalendarIcon, ListBulletIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PlusIcon, CalendarIcon, ListBulletIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import SessionForm from './SessionForm';
 
 interface Session {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   location: string;
   start_time: string;
   end_time: string;
   capacity: number;
   price: number;
-  session_type: string;
+  session_type: 'individual' | 'group' | 'daycare';
   status: string;
+  waitlist_enabled: boolean;
   signups?: any[];
 }
 
@@ -87,7 +88,8 @@ const TrainerCalendar = () => {
 
     try {
       setLoading(true);
-      const response = await apiRequest('/sessions', { token });
+      // Add cache busting parameter to ensure fresh data
+      const response = await apiRequest(`/sessions?_t=${Date.now()}`, { token });
 
       let sessionData = [];
       if (response.success) {
@@ -104,6 +106,7 @@ const TrainerCalendar = () => {
       );
 
       setSessions(filteredSessions);
+      console.log('Fetched sessions:', filteredSessions.length, 'total sessions');
     } catch (error) {
       console.error('Error fetching sessions:', error);
     } finally {
@@ -129,14 +132,55 @@ const TrainerCalendar = () => {
   const handleSessionFormSuccess = () => {
     setShowSessionForm(false);
     setSelectedDate(null);
+    setSelectedSession(null);
     fetchSessions(); // Refresh sessions after creating/updating
   };
 
+  const handleEditSession = (session: Session) => {
+    setSelectedSession(session);
+    setShowSessionForm(true);
+    setShowSessionModal(false);
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!window.confirm('Ste si istí, že chcete zmazať tento tréning?')) {
+      return;
+    }
+
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      setShowSessionModal(false);
+      setSelectedSession(null);
+      fetchSessions();
+      alert('Tréning bol úspešne zmazaný');
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      alert('Chyba pri mazaní tréningu');
+    }
+  };
+
   const getSessionsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    // Use local date format to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
     return sessions.filter(session => {
-      const sessionDate = new Date(session.start_time).toISOString().split('T')[0];
-      return sessionDate === dateStr;
+      const sessionDate = new Date(session.start_time);
+      const sessionYear = sessionDate.getFullYear();
+      const sessionMonth = String(sessionDate.getMonth() + 1).padStart(2, '0');
+      const sessionDay = String(sessionDate.getDate()).padStart(2, '0');
+      const sessionDateStr = `${sessionYear}-${sessionMonth}-${sessionDay}`;
+      
+      return sessionDateStr === dateStr;
     });
   };
 
@@ -505,10 +549,21 @@ const TrainerCalendar = () => {
                 <div
                   key={index}
                   className={`
-                    min-h-[300px] lg:min-h-[400px] p-2 lg:p-3 rounded-lg border transition-all
+                    min-h-[300px] lg:min-h-[400px] p-2 lg:p-3 rounded-lg border transition-all relative group
                     ${isTodayDay ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'}
                   `}
                 >
+                  {/* Create session button for desktop week view */}
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <button
+                      onClick={() => handleCreateSessionClick(day)}
+                      className="p-1.5 rounded-full bg-blue-500 text-white hover:bg-blue-600 hover:scale-110 transform transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      title="Vytvoriť nový tréning"
+                    >
+                      <PlusIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                  
                   <div className="space-y-1">
                     {visibleSessions.map((session) => (
                       <button
@@ -630,8 +685,8 @@ const TrainerCalendar = () => {
                   </div>
                 )}
 
-                {/* Plus Icon for Creating New Session - only on desktop hover */}
-                {isCurrentMonthDay && window.innerWidth >= 640 && (
+                {/* Plus Icon for Creating New Session - show on all devices */}
+                {isCurrentMonthDay && (
                   <div className="absolute top-1 sm:top-2 right-1 sm:right-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
                     <div 
                       onClick={(e) => {
@@ -1000,6 +1055,26 @@ const TrainerCalendar = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Action Buttons */}
+                  <div className="border-t border-gray-200 pt-6">
+                    <div className="flex space-x-3">
+                      <button
+                        onClick={() => handleEditSession(selectedSession)}
+                        className="flex-1 flex items-center justify-center px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 active:bg-blue-700 transition-colors touch-manipulation"
+                      >
+                        <PencilIcon className="h-5 w-5 mr-2" />
+                        Upraviť
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSession(selectedSession.id)}
+                        className="flex-1 flex items-center justify-center px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 active:bg-red-700 transition-colors touch-manipulation"
+                      >
+                        <TrashIcon className="h-5 w-5 mr-2" />
+                        Zmazať
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1010,6 +1085,7 @@ const TrainerCalendar = () => {
       {/* Session Form Modal */}
       {showSessionForm && (
         <SessionForm
+          session={selectedSession}
           date={selectedDate}
           onClose={handleSessionFormClose}
           onSuccess={handleSessionFormSuccess}
