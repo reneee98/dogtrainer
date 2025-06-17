@@ -12,6 +12,7 @@ use App\Http\Controllers\HealthController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\DaycareController;
+use App\Http\Controllers\Api\TrainerClientController;
 
 /*
 |--------------------------------------------------------------------------
@@ -117,6 +118,15 @@ Route::middleware('auth:sanctum')->group(function () {
         // Owner-specific endpoints can be added here
     });
 
+    // Trainer-Client Relationship routes
+    Route::prefix('trainer-clients')->group(function () {
+        Route::get('/', [TrainerClientController::class, 'index']);
+        Route::post('/request-trainer', [TrainerClientController::class, 'requestTrainer']);
+        Route::put('/{id}/status', [TrainerClientController::class, 'updateStatus']);
+        Route::get('/pending-requests', [TrainerClientController::class, 'pendingRequests']);
+        Route::delete('/{id}', [TrainerClientController::class, 'destroy']);
+    });
+
     // Trainer routes
     Route::prefix('trainers')->middleware('role:trainer')->group(function () {
         // Trainer-specific endpoints can be added here
@@ -126,7 +136,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Public Routes (no authentication required)
 Route::prefix('public')->group(function () {
-    Route::get('/trainers', [UserController::class, 'publicTrainers']);
+    Route::get('/trainers', [TrainerClientController::class, 'availableTrainers']);
     Route::get('/trainers/{trainer}', [UserController::class, 'publicTrainerProfile']);
     Route::get('/sessions/available', [SessionController::class, 'availableSessions']);
     Route::get('/reviews/trainer/{trainer}', [ReviewController::class, 'publicTrainerReviews']);

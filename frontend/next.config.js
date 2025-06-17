@@ -1,8 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // Remove standalone output for development
   experimental: {
-    outputFileTracingRoot: '/',
+    // Remove outputFileTracingRoot that was causing issues
+  },
+  // API Proxy Configuration
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:8000/api/:path*',
+      },
+    ];
   },
   // PWA Configuration
   images: {

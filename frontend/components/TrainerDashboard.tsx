@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { sessionApi, bookingApi, reviewApi } from '../lib/api';
 import { format, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { sk } from 'date-fns/locale';
+import ClientRequestsManagement from './ClientRequestsManagement';
 
 export default function TrainerDashboard() {
   const { token, user } = useAuth();
@@ -373,6 +374,11 @@ export default function TrainerDashboard() {
             </div>
           </div>
         )}
+
+        {/* Client Requests Management */}
+        <div className="mt-8">
+          <ClientRequestsManagement />
+        </div>
       </div>
     </div>
   );

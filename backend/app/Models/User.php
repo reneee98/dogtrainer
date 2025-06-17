@@ -135,5 +135,69 @@ class User extends Authenticatable
     {
         return $query->where('is_active', true);
     }
+
+    /**
+     * Get trainer-client relationships where this user is the trainer.
+     */
+    public function clientRelationships(): HasMany
+    {
+        return $this->hasMany(\App\Models\TrainerClient::class, 'trainer_id');
+    }
+
+    /**
+     * Get trainer-client relationships where this user is the client.
+     */
+    public function trainerRelationships(): HasMany
+    {
+        return $this->hasMany(\App\Models\TrainerClient::class, 'client_id');
+    }
+
+    /**
+     * Get approved clients for this trainer.
+     */
+    public function approvedClients(): HasMany
+    {
+        return $this->hasMany(\App\Models\TrainerClient::class, 'trainer_id')->approved();
+    }
+
+    /**
+     * Get approved trainers for this client.
+     */
+    public function approvedTrainers(): HasMany
+    {
+        return $this->hasMany(\App\Models\TrainerClient::class, 'client_id')->approved();
+    }
+
+    /**
+     * Get pending client requests for this trainer.
+     */
+    public function pendingClientRequests(): HasMany
+    {
+        return $this->hasMany(\App\Models\TrainerClient::class, 'trainer_id')->pending();
+    }
+
+    /**
+     * Check if this user has an approved relationship with a trainer/client.
+     */
+    public function hasApprovedRelationshipWith(string $userId): bool
+    {
+        if ($this->isTrainer()) {
+            return $this->clientRelationships()->where('client_id', $userId)->approved()->exists();
+        } else {
+            return $this->trainerRelationships()->where('trainer_id', $userId)->approved()->exists();
+        }
+    }
+
+    /**
+     * Check if this user can access trainer's schedule.
+     */
+    public function canAccessTrainerSchedule(string $trainerId): bool
+    {
+        if ($this->isTrainer() && $this->id === $trainerId) {
+            return true; // Trainer can access their own schedule
+        }
+
+        return $this->hasApprovedRelationshipWith($trainerId);
+    }
 }
  
