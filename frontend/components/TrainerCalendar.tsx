@@ -209,13 +209,15 @@ const TrainerCalendar = () => {
 
   const getSessionsForPeriod = () => {
     if (viewMode === 'list') {
-      // Show next 2 weeks for list view
-      const now = new Date();
-      const twoWeeksLater = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+      // Show only today's sessions for list view
+      const today = new Date();
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+      
       return sessions
         .filter(session => {
           const sessionDate = new Date(session.start_time);
-          return sessionDate >= now && sessionDate <= twoWeeksLater;
+          return sessionDate >= startOfToday && sessionDate <= endOfToday;
         })
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
     }
@@ -375,12 +377,8 @@ const TrainerCalendar = () => {
       setCurrentDate(newDate);
     } else if (viewMode === 'month') {
       setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-    } else {
-      // For list view, go back 2 weeks
-      const newDate = new Date(currentDate);
-      newDate.setDate(currentDate.getDate() - 14);
-      setCurrentDate(newDate);
     }
+    // List view navigation disabled - always shows today only
   };
 
   const nextPeriod = () => {
@@ -390,12 +388,8 @@ const TrainerCalendar = () => {
       setCurrentDate(newDate);
     } else if (viewMode === 'month') {
       setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-    } else {
-      // For list view, go forward 2 weeks
-      const newDate = new Date(currentDate);
-      newDate.setDate(currentDate.getDate() + 14);
-      setCurrentDate(newDate);
     }
+    // List view navigation disabled - always shows today only
   };
 
   const goToToday = () => {
@@ -451,7 +445,7 @@ const TrainerCalendar = () => {
 
   const getCalendarTitle = () => {
     if (viewMode === 'list') {
-      return 'Tréningy';
+      return 'Dnešné tréningy';
     } else if (viewMode === 'week') {
       const weekDays = getWeekDays();
       const start = weekDays[0];
@@ -469,23 +463,23 @@ const TrainerCalendar = () => {
 
   // Mobile List View - Primary view for phones
   const renderListView = () => {
-    const upcomingSessions = getSessionsForPeriod();
+    const todaysSessions = getSessionsForPeriod();
     
-    if (upcomingSessions.length === 0) {
+    if (todaysSessions.length === 0) {
       return (
         <div className="text-center py-12">
           <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Žiadne nadchádzajúce tréningy
+            Žiadne dnešné tréningy
           </h3>
           <p className="text-gray-500 mb-6">
-            Momentálne nie sú naplánované žiadne tréningy.
+            Dnes nie sú naplánované žiadne tréningy.
           </p>
           <button
             onClick={() => handleCreateSessionClick(new Date())}
             className="bg-blue-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors"
           >
-            Vytvoriť nový tréning
+            Vytvoriť dnešný tréning
           </button>
         </div>
       );
@@ -522,7 +516,7 @@ const TrainerCalendar = () => {
 
           {/* Table rows */}
           <div className="space-y-1">
-            {upcomingSessions.map((session) => (
+            {todaysSessions.map((session) => (
               <div
                 key={session.id}
                 onClick={() => handleSessionClick(session)}
@@ -622,7 +616,7 @@ const TrainerCalendar = () => {
 
         {/* Mobile Cards */}
         <div className="md:hidden space-y-3">
-          {upcomingSessions.map((session) => (
+          {todaysSessions.map((session) => (
             <div
               key={session.id}
               onClick={() => handleSessionClick(session)}
@@ -1162,21 +1156,23 @@ const TrainerCalendar = () => {
                 </button>
               </div>
               
-              {/* Navigation */}
-              <div className="flex items-center">
-                <button
-                  onClick={previousPeriod}
-                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
-                >
-                  <ChevronLeftIcon className="h-5 w-5" />
-                </button>
-                <button
-                  onClick={nextPeriod}
-                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
-                >
-                  <ChevronRightIcon className="h-5 w-5" />
-                </button>
-              </div>
+              {/* Navigation - Hidden for list view since it shows only today */}
+              {viewMode !== 'list' && (
+                <div className="flex items-center">
+                  <button
+                    onClick={previousPeriod}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
+                  >
+                    <ChevronLeftIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={nextPeriod}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
+                  >
+                    <ChevronRightIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
