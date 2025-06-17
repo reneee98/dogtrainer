@@ -498,27 +498,14 @@ const TrainerCalendar = () => {
             {weekDays.map((day, index) => {
               const daySessions = getSessionsForDate(day);
               const isTodayDay = isToday(day);
-              const dayKey = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
-              const isExpanded = expandedDays.has(dayKey);
-              const visibleSessions = isExpanded ? daySessions : daySessions.slice(0, 3);
-              const hasMore = daySessions.length > 3;
-
-              const toggleDayExpansion = (dayKey: string) => {
-                const newExpanded = new Set(expandedDays);
-                if (newExpanded.has(dayKey)) {
-                  newExpanded.delete(dayKey);
-                } else {
-                  newExpanded.add(dayKey);
-                }
-                setExpandedDays(newExpanded);
-              };
+              // Always show all sessions for the day
+              const visibleSessions = daySessions;
 
               return (
                 <div
                   key={index}
                   className={`
-                    relative min-h-[300px] lg:min-h-[400px] p-2 lg:p-3 rounded-lg border transition-all
-                    hover:border-gray-200 hover:shadow-sm group
+                    min-h-[300px] lg:min-h-[400px] p-2 lg:p-3 rounded-lg border transition-all
                     ${isTodayDay ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'}
                   `}
                 >
@@ -552,33 +539,7 @@ const TrainerCalendar = () => {
                         </div>
                       </button>
                     ))}
-                    
-                    {hasMore && (
-                      <button
-                        onClick={() => toggleDayExpansion(dayKey)}
-                        className="w-full text-xs text-gray-500 p-2 text-center bg-gray-50 hover:bg-gray-100 rounded-md transition-colors border border-gray-200"
-                      >
-                        {isExpanded 
-                          ? `Skryť ${daySessions.length - 3} ${daySessions.length - 3 === 1 ? 'tréning' : daySessions.length - 3 <= 4 ? 'tréningy' : 'tréningov'}`
-                          : `+${daySessions.length - 3} ${daySessions.length - 3 === 1 ? 'ďalší' : 'ďalších'}`
-                        }
-                      </button>
-                    )}
                   </div>
-
-                  {/* Plus Icon for Creating New Session */}
-                  <button
-                    onClick={() => handleCreateSessionClick(day)}
-                    className="
-                      absolute top-2 lg:top-3 right-2 lg:right-3 p-1 lg:p-2 rounded-full bg-blue-500 text-white
-                      opacity-0 group-hover:opacity-100 transition-all duration-200
-                      hover:bg-blue-600 hover:scale-110 transform
-                      focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                    "
-                    title="Vytvoriť nový tréning"
-                  >
-                    <PlusIcon className="h-4 lg:h-5 w-4 lg:w-5" />
-                  </button>
                 </div>
               );
             })}
