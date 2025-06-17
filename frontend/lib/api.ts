@@ -34,6 +34,8 @@ interface ApiOptions {
 export async function apiRequest(endpoint: string, options: ApiOptions = {}) {
   const { token, method = 'GET', body } = options;
   
+  console.log('API Request:', { endpoint, method, body, token: token ? 'provided' : 'none' });
+  
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -50,16 +52,39 @@ export async function apiRequest(endpoint: string, options: ApiOptions = {}) {
 
   if (body && method !== 'GET') {
     config.body = JSON.stringify(body);
+    console.log('Request body:', config.body);
   }
 
-  const response = await fetch(`${API_BASE_URL}/api${endpoint}`, config);
+  const url = `${API_BASE_URL}/api${endpoint}`;
+  console.log('Making request to:', url);
   
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `HTTP ${response.status}`);
-  }
+  try {
+    const response = await fetch(url, config);
+    
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error response:', errorText);
+      
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { message: errorText };
+      }
+      
+      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+    }
 
-  return response.json();
+    const responseData = await response.json();
+    console.log('Response data:', responseData);
+    return responseData;
+  } catch (error) {
+    console.error('API Request failed:', error);
+    throw error;
+  }
 }
 
 // Dog API

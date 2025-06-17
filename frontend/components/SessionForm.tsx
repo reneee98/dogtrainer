@@ -12,7 +12,7 @@ const sessionSchema = z.object({
   location: z.string().min(2, 'Zadajte miesto konania'),
   session_type: z.enum(['individual', 'group', 'daycare'], { required_error: 'Vyberte typ relácie' }),
   start_time: z.string().min(1, 'Vyberte dátum a čas začiatku'),
-  end_time: z.string().min(1, 'Vyberte dátum a čas konca'),
+  duration: z.number().min(1, 'Vyberte trvanie').max(3, 'Maximálne trvanie je 3 hodiny'),
   capacity: z.number().min(1, 'Kapacita musí byť aspoň 1').max(20, 'Kapacita je príliš vysoká'),
   price: z.number().min(0, 'Cena musí byť kladné číslo'),
   waitlist_enabled: z.boolean().optional(),
@@ -39,11 +39,19 @@ interface SessionFormProps {
   onSuccess: () => void;
 }
 
+const calculateDuration = (startTime: string, endTime: string): number => {
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  const diffInMs = end.getTime() - start.getTime();
+  const diffInHours = diffInMs / (1000 * 60 * 60);
+  return Math.round(diffInHours);
+};
+
 export default function SessionForm({ session, onClose, onSuccess }: SessionFormProps) {
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<SessionFormData>({
+  const { register, handleSubmit, formState: { errors }, watch } = useForm<SessionFormData>({
     resolver: zodResolver(sessionSchema),
     defaultValues: {
       title: session?.title || '',
@@ -51,20 +59,40 @@ export default function SessionForm({ session, onClose, onSuccess }: SessionForm
       location: session?.location || '',
       session_type: session?.session_type || 'individual',
       start_time: session?.start_time ? new Date(session.start_time).toISOString().slice(0, 16) : '',
-      end_time: session?.end_time ? new Date(session.end_time).toISOString().slice(0, 16) : '',
+      duration: session?.start_time && session?.end_time 
+        ? calculateDuration(session.start_time, session.end_time)
+        : 1,
       capacity: session?.capacity || 1,
       price: session?.price || 0,
       waitlist_enabled: session?.waitlist_enabled || false,
     },
   });
 
+  const startTime = watch('start_time');
+  const duration = watch('duration');
+
+  const calculateEndTime = (start: string, durationHours: number): string => {
+    if (!start) return '';
+    const startDate = new Date(start);
+    const endDate = new Date(startDate.getTime() + durationHours * 60 * 60 * 1000);
+    return endDate.toISOString();
+  };
+
   const onSubmit = async (data: SessionFormData) => {
     setLoading(true);
     try {
+      const endTime = calculateEndTime(data.start_time, data.duration);
+      
       const sessionData = {
-        ...data,
+        title: data.title,
+        description: data.description,
+        location: data.location,
+        session_type: data.session_type,
         start_time: new Date(data.start_time).toISOString(),
-        end_time: new Date(data.end_time).toISOString(),
+        end_time: endTime,
+        capacity: data.capacity,
+        price: data.price,
+        waitlist_enabled: data.waitlist_enabled,
       };
 
       if (session) {
@@ -160,14 +188,22 @@ export default function SessionForm({ session, onClose, onSuccess }: SessionForm
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Koniec</label>
-              <input
-                {...register('end_time')}
-                type="datetime-local"
+              <label className="block text-sm font-medium text-gray-700 mb-1">Trvanie</label>
+              <select 
+                {...register('duration', { valueAsNumber: true })} 
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              />
-              {errors.end_time && (
-                <p className="mt-1 text-sm text-red-600">{errors.end_time.message}</p>
+              >
+                <option value={1}>1 hodina</option>
+                <option value={2}>2 hodiny</option>
+                <option value={3}>3 hodiny</option>
+              </select>
+              {errors.duration && (
+                <p className="mt-1 text-sm text-red-600">{errors.duration.message}</p>
+              )}
+              {startTime && duration && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Koniec: {new Date(calculateEndTime(startTime, duration)).toLocaleString('sk-SK')}
+                </p>
               )}
             </div>
           </div>
