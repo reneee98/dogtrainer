@@ -676,10 +676,10 @@ const OwnerCalendar = () => {
 
         {/* Mobile: Selected date sessions list */}
         {selectedDate && selectedDateSessions.length > 0 && (
-          <div className="sm:hidden mt-6 bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <div className="sm:hidden bg-white border-t border-gray-100">
             <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900">
+                <h3 className="font-medium text-gray-900">
                   {formatDate(selectedDate.toISOString())}
                 </h3>
                 <button
@@ -691,73 +691,28 @@ const OwnerCalendar = () => {
               </div>
             </div>
             <div className="divide-y divide-gray-100">
-              {selectedDateSessions.map((session) => {
-                const typeColor = getSessionTypeColor(session.session_type);
-                const isSignedUp = isUserSignedUp(session);
-                const isFull = isSessionFull(session);
-                
-                return (
-                  <button
-                    key={session.id}
-                    onClick={() => handleSessionClick(session)}
-                    className="w-full p-4 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex items-start space-x-3">
-                      {/* Time & Status indicator */}
-                      <div className="flex flex-col items-center space-y-1 flex-shrink-0">
-                        <div className="text-sm font-medium text-gray-900">
-                          {formatTime(session.start_time)}
-                        </div>
-                        <div className={`w-2 h-2 rounded-full ${
-                          typeColor.includes('blue') ? 'bg-blue-500' :
-                          typeColor.includes('green') ? 'bg-green-500' : 'bg-purple-500'
-                        }`} />
+              {selectedDateSessions.map((session) => (
+                <button
+                  key={session.id}
+                  onClick={() => handleSessionClick(session)}
+                  className="w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="text-sm font-medium text-gray-900">
+                        {formatTime(session.start_time)}
                       </div>
-                      
-                      {/* Session details */}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-base font-medium text-gray-900 truncate">
-                          {session.title}
-                        </h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {getSessionTypeLabel(session.session_type)} • {session.trainer.name}
-                        </p>
-                        {session.location && (
-                          <p className="text-sm text-gray-500 mt-1">
-                            📍 {session.location}
-                          </p>
-                        )}
-                        
-                        {/* Status badges */}
-                        <div className="flex items-center space-x-2 mt-2">
-                          {isSignedUp && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              ✓ Prihlásený
-                            </span>
-                          )}
-                          {isFull && !isSignedUp && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              Obsadené
-                            </span>
-                          )}
-                          {session.available_spots !== undefined && session.available_spots > 0 && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {session.available_spots} miest
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Price */}
-                      <div className="text-right flex-shrink-0">
-                        <div className="text-lg font-bold text-gray-900">
-                          {session.price}€
-                        </div>
+                      <div className="text-sm text-gray-900">
+                        {session.title}
                       </div>
                     </div>
-                  </button>
-                );
-              })}
+                    <div className={`w-2 h-2 rounded-full ${
+                      session.session_type === 'individual' ? 'bg-blue-500' :
+                      session.session_type === 'group' ? 'bg-green-500' : 'bg-purple-500'
+                    }`} />
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -770,33 +725,32 @@ const OwnerCalendar = () => {
               if (todaySessions.length === 0) return null;
               
               return (
-                <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                  <h3 className="font-semibold text-blue-900 mb-3">Dnešné tréningy</h3>
-                  <div className="space-y-2">
-                    {todaySessions.slice(0, 2).map((session) => (
-                      <button
-                        key={session.id}
-                        onClick={() => handleSessionClick(session)}
-                        className="w-full flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200 hover:bg-blue-25 active:bg-blue-100 transition-colors"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="text-sm font-medium text-blue-900">
-                            {formatTime(session.start_time)}
+                <div className="bg-blue-50 border-t border-blue-100">
+                  <div className="px-4 py-3">
+                    <h3 className="font-medium text-blue-900 mb-2">Dnešné tréningy</h3>
+                    <div className="space-y-1">
+                      {todaySessions.slice(0, 3).map((session) => (
+                        <button
+                          key={session.id}
+                          onClick={() => handleSessionClick(session)}
+                          className="w-full flex items-center justify-between py-2 hover:bg-blue-100 rounded-md transition-colors"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="text-sm font-medium text-blue-900">
+                              {formatTime(session.start_time)}
+                            </div>
+                            <div className="text-sm text-blue-800">
+                              {session.title}
+                            </div>
                           </div>
-                          <div className="text-sm text-blue-800 truncate">
-                            {session.title}
-                          </div>
+                        </button>
+                      ))}
+                      {todaySessions.length > 3 && (
+                        <div className="text-center text-xs text-blue-700 pt-1">
+                          +{todaySessions.length - 3} viac
                         </div>
-                        <div className="text-sm font-bold text-blue-900">
-                          {session.price}€
-                        </div>
-                      </button>
-                    ))}
-                    {todaySessions.length > 2 && (
-                      <div className="text-center text-sm text-blue-700">
-                        +{todaySessions.length - 2} viac tréningov
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -816,73 +770,71 @@ const OwnerCalendar = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="w-full">
       {/* Header */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-100">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
+      <div className="bg-white shadow-sm border-b border-gray-100">
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between">
             {/* Title and Today button */}
-            <div className="flex items-center justify-between sm:justify-start sm:space-x-4">
-              <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 truncate">
+            <div className="flex items-center space-x-3">
+              <h1 className="text-lg sm:text-xl font-semibold text-gray-900">
                 {getCalendarTitle()}
               </h1>
               <button
                 onClick={goToToday}
-                className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex-shrink-0"
+                className="px-2 py-1 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
               >
                 Dnes
               </button>
             </div>
 
             {/* Controls */}
-            <div className="flex items-center justify-between sm:justify-end sm:space-x-4">
+            <div className="flex items-center space-x-2">
               {/* View Mode Toggle */}
-              <div className="flex bg-gray-100 rounded-lg p-1">
+              <div className="flex bg-gray-100 rounded-lg p-0.5">
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors flex items-center space-x-1 ${
+                  className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center ${
                     viewMode === 'list' 
                       ? 'bg-white text-gray-900 shadow-sm font-medium' 
-                      : 'text-gray-600 hover:text-gray-900'
+                      : 'text-gray-600'
                   }`}
                 >
                   <ListBulletIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline">Zoznam</span>
                 </button>
                 <button
                   onClick={() => setViewMode('month')}
-                  className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors flex items-center space-x-1 ${
+                  className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center ${
                     viewMode === 'month' 
                       ? 'bg-white text-gray-900 shadow-sm font-medium' 
-                      : 'text-gray-600 hover:text-gray-900'
+                      : 'text-gray-600'
                   }`}
                 >
                   <CalendarIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline">Mesiac</span>
                 </button>
                 <button
                   onClick={() => setViewMode('week')}
-                  className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors hidden sm:flex items-center space-x-1 ${
+                  className={`px-2 py-1 text-xs rounded-md transition-colors hidden sm:flex items-center ${
                     viewMode === 'week' 
                       ? 'bg-white text-gray-900 shadow-sm font-medium' 
-                      : 'text-gray-600 hover:text-gray-900'
+                      : 'text-gray-600'
                   }`}
                 >
-                  <span>Týždeň</span>
+                  <span className="text-xs">T</span>
                 </button>
               </div>
               
               {/* Navigation */}
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center">
                 <button
                   onClick={previousPeriod}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors touch-manipulation"
+                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
                 >
                   <ChevronLeftIcon className="h-5 w-5" />
                 </button>
                 <button
                   onClick={nextPeriod}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors touch-manipulation"
+                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
                 >
                   <ChevronRightIcon className="h-5 w-5" />
                 </button>
@@ -894,7 +846,7 @@ const OwnerCalendar = () => {
         {/* Calendar Content with swipe support */}
         <div 
           ref={calendarRef}
-          className="p-4 sm:p-6"
+          className="pb-2"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -902,20 +854,6 @@ const OwnerCalendar = () => {
           {viewMode === 'list' ? renderListView() : 
            viewMode === 'week' ? renderWeekView() : 
            renderMonthView()}
-        </div>
-
-        {/* Legend - Hidden on mobile */}
-        <div className="hidden sm:block px-6 pb-6">
-          <div className="flex justify-center space-x-6 text-sm">
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-blue-500 rounded"></div>
-              <span>Individuálny tréning</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-green-500 rounded"></div>
-              <span>Skupinový tréning</span>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -973,21 +911,18 @@ const OwnerCalendar = () => {
                         <span className="font-medium text-gray-900">{selectedSession.location}</span>
                       </div>
                       <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Tréner</span>
+                        <span className="font-medium text-gray-900">{selectedSession.trainer.name}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
                         <span className="text-gray-600">Cena</span>
                         <span className="font-medium text-gray-900 text-lg">{selectedSession.price}€</span>
                       </div>
-                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600">Obsadenosť</span>
-                        <span className="font-medium text-gray-900">
-                          {selectedSession.available_spots !== undefined ? 
-                            `${selectedSession.capacity - selectedSession.available_spots}/${selectedSession.capacity} miest` :
-                            `${selectedSession.capacity} miest dostupných`
-                          }
-                        </span>
-                      </div>
                       <div className="flex items-center justify-between py-2">
-                        <span className="text-gray-600">Tréner</span>
-                        <span className="font-medium text-gray-900">{selectedSession.trainer.name}</span>
+                        <span className="text-gray-600">Voľné miesta</span>
+                        <span className="font-medium text-gray-900">
+                          {selectedSession.available_spots || 0}/{selectedSession.capacity}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -999,83 +934,70 @@ const OwnerCalendar = () => {
                     </div>
                   )}
 
-                  {!isUserSignedUp(selectedSession) && !isSessionFull(selectedSession) && (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-900 mb-3">
-                          Vyberte psa
-                        </label>
-                        <select
-                          value={selectedDogId}
-                          onChange={(e) => setSelectedDogId(e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                  <div className="pt-4">
+                    {isUserSignedUp(selectedSession) ? (
+                      <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-green-800 font-medium">Už ste prihlásený na tento tréning</span>
+                        </div>
+                      </div>
+                    ) : isSessionFull(selectedSession) ? (
+                      <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          <span className="text-red-800 font-medium">Tréning je plne obsadený</span>
+                        </div>
+                      </div>
+                    ) : dogs.length === 0 ? (
+                      <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                          <span className="text-amber-800 font-medium">Najprv si pridajte svojho psa</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Vyberte psa pre tréning
+                          </label>
+                          <select
+                            value={selectedDogId}
+                            onChange={(e) => setSelectedDogId(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            {dogs.map((dog) => (
+                              <option key={dog.id} value={dog.id}>
+                                {dog.name} ({dog.breed})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Poznámky (voliteľné)
+                          </label>
+                          <textarea
+                            value={bookingNotes}
+                            onChange={(e) => setBookingNotes(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            rows={3}
+                            placeholder="Dodatočné informácie pre trénera..."
+                          />
+                        </div>
+
+                        <button
+                          onClick={handleBookSession}
+                          disabled={isBooking || !selectedDogId}
+                          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
                         >
-                          {dogs.map((dog) => (
-                            <option key={dog.id} value={dog.id}>
-                              {dog.name} ({dog.breed})
-                            </option>
-                          ))}
-                        </select>
+                          {isBooking ? 'Prihlasuje sa...' : 'Prihlásiť sa na tréning'}
+                        </button>
                       </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-900 mb-3">
-                          Poznámky pre trénera (voliteľné)
-                        </label>
-                        <textarea
-                          value={bookingNotes}
-                          onChange={(e) => setBookingNotes(e.target.value)}
-                          rows={4}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-base"
-                          placeholder="Napríklad: zvláštne potreby psa, zdravotné obmedzenia, ciele tréningy..."
-                        />
-                      </div>
-
-                      <button
-                        onClick={handleBookSession}
-                        disabled={isBooking || !selectedDogId}
-                        className="w-full bg-blue-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
-                      >
-                        {isBooking ? 'Prihlasuje sa...' : 'Prihlásiť sa na tréning'}
-                      </button>
-                    </div>
-                  )}
-
-                  {isUserSignedUp(selectedSession) && (
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                          <span className="text-green-600 text-lg">✓</span>
-                        </div>
-                        <div>
-                          <p className="text-green-800 font-medium">
-                            Už ste prihlásený na tento tréning
-                          </p>
-                          <p className="text-green-700 text-sm">
-                            Čakáte na potvrdenie od trénera
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {isSessionFull(selectedSession) && !isUserSignedUp(selectedSession) && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
-                          <span className="text-amber-600 text-lg">⚠</span>
-                        </div>
-                        <div>
-                          <p className="text-amber-800 font-medium">
-                            Tréning je plne obsadený
-                          </p>
-                          <p className="text-amber-700 text-sm">
-                            Všetky miesta sú už rezervované
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

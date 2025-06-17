@@ -649,13 +649,9 @@ const TrainerCalendar = () => {
                   </div>
                 )}
 
-                {/* Plus Icon for Creating New Session - always visible on desktop hover, bottom-right on mobile */}
-                {isCurrentMonthDay && (
-                  <div className={`
-                    absolute ${window.innerWidth < 640 ? 'top-1 right-1' : 'top-1 sm:top-2 right-1 sm:right-2'}
-                    ${window.innerWidth < 640 ? 'opacity-40' : 'opacity-0 group-hover:opacity-100'}
-                    transition-all duration-200
-                  `}>
+                {/* Plus Icon for Creating New Session - only on desktop hover */}
+                {isCurrentMonthDay && window.innerWidth >= 640 && (
+                  <div className="absolute top-1 sm:top-2 right-1 sm:right-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
                     <div 
                       onClick={(e) => {
                         e.stopPropagation();
@@ -696,10 +692,10 @@ const TrainerCalendar = () => {
 
         {/* Mobile: Selected date sessions list */}
         {selectedDate && (
-          <div className="sm:hidden mt-6 bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <div className="sm:hidden bg-white border-t border-gray-100">
             <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900">
+                <h3 className="font-medium text-gray-900">
                   {selectedDate.toLocaleDateString('sk-SK', { 
                     weekday: 'long',
                     day: 'numeric',
@@ -716,81 +712,46 @@ const TrainerCalendar = () => {
             </div>
 
             {/* Create session button */}
-            <div className="p-4 border-b border-gray-100">
+            <div className="px-4 py-3 border-b border-gray-100">
               <button
                 onClick={() => handleCreateSessionClick(selectedDate)}
-                className="w-full flex items-center justify-center space-x-2 p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 active:bg-blue-700 transition-colors"
+                className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 active:bg-blue-700 transition-colors"
               >
                 <PlusIcon className="h-5 w-5" />
-                <span className="font-medium">Vytvoriť nový tréning</span>
+                <span className="font-medium">Vytvoriť tréning</span>
               </button>
             </div>
 
             {/* Sessions list */}
             {selectedDateSessions.length > 0 ? (
               <div className="divide-y divide-gray-100">
-                {selectedDateSessions.map((session) => {
-                  const typeColor = getSessionTypeColor(session.session_type, session.status);
-                  
-                  return (
-                    <button
-                      key={session.id}
-                      onClick={() => handleSessionClick(session)}
-                      className="w-full p-4 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                    >
-                      <div className="flex items-start space-x-3">
-                        {/* Time & Status indicator */}
-                        <div className="flex flex-col items-center space-y-1 flex-shrink-0">
-                          <div className="text-sm font-medium text-gray-900">
-                            {formatTime(session.start_time)}
-                          </div>
-                          <div className={`w-2 h-2 rounded-full ${
-                            typeColor.includes('blue') ? 'bg-blue-500' :
-                            typeColor.includes('green') ? 'bg-green-500' : 
-                            typeColor.includes('red') ? 'bg-red-500' : 'bg-gray-400'
-                          }`} />
+                {selectedDateSessions.map((session) => (
+                  <button
+                    key={session.id}
+                    onClick={() => handleSessionClick(session)}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="text-sm font-medium text-gray-900">
+                          {formatTime(session.start_time)}
                         </div>
-                        
-                        {/* Session details */}
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-base font-medium text-gray-900 truncate">
-                            {session.title}
-                          </h4>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {getSessionTypeLabel(session.session_type)} • {getStatusLabel(session.status)}
-                          </p>
-                          {session.location && (
-                            <p className="text-sm text-gray-500 mt-1">
-                              📍 {session.location}
-                            </p>
-                          )}
-                          
-                          {/* Participants count */}
-                          {session.signups && (
-                            <div className="flex items-center space-x-2 mt-2">
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                👥 {session.signups.length}/{session.capacity} účastníkov
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Price */}
-                        <div className="text-right flex-shrink-0">
-                          <div className="text-lg font-bold text-gray-900">
-                            {session.price}€
-                          </div>
+                        <div className="text-sm text-gray-900">
+                          {session.title}
                         </div>
                       </div>
-                    </button>
-                  );
-                })}
+                      <div className={`w-2 h-2 rounded-full ${
+                        session.session_type === 'individual' ? 'bg-blue-500' :
+                        session.session_type === 'group' ? 'bg-green-500' : 'bg-purple-500'
+                      }`} />
+                    </div>
+                  </button>
+                ))}
               </div>
             ) : (
-              <div className="p-6 text-center text-gray-500">
-                <CalendarIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                <p>Žiadne tréningy na tento deň</p>
-                <p className="text-sm mt-1">Vytvorte nový tréning kliknutím na tlačidlo vyššie</p>
+              <div className="px-4 py-6 text-center text-gray-500">
+                <CalendarIcon className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm">Žiadne tréningy</p>
               </div>
             )}
           </div>
@@ -804,33 +765,35 @@ const TrainerCalendar = () => {
               if (todaySessions.length === 0) return null;
               
               return (
-                <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                  <h3 className="font-semibold text-blue-900 mb-3">Dnešné tréningy</h3>
-                  <div className="space-y-2">
-                    {todaySessions.slice(0, 2).map((session) => (
-                      <button
-                        key={session.id}
-                        onClick={() => handleSessionClick(session)}
-                        className="w-full flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200 hover:bg-blue-25 active:bg-blue-100 transition-colors"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="text-sm font-medium text-blue-900">
-                            {formatTime(session.start_time)}
+                <div className="bg-blue-50 border-t border-blue-100">
+                  <div className="px-4 py-3">
+                    <h3 className="font-medium text-blue-900 mb-2">Dnešné tréningy</h3>
+                    <div className="space-y-1">
+                      {todaySessions.slice(0, 3).map((session) => (
+                        <button
+                          key={session.id}
+                          onClick={() => handleSessionClick(session)}
+                          className="w-full flex items-center justify-between py-2 hover:bg-blue-100 rounded-md transition-colors"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="text-sm font-medium text-blue-900">
+                              {formatTime(session.start_time)}
+                            </div>
+                            <div className="text-sm text-blue-800">
+                              {session.title}
+                            </div>
                           </div>
-                          <div className="text-sm text-blue-800 truncate">
-                            {session.title}
+                          <div className="text-xs text-blue-700">
+                            {session.signups?.length || 0}/{session.capacity}
                           </div>
+                        </button>
+                      ))}
+                      {todaySessions.length > 3 && (
+                        <div className="text-center text-xs text-blue-700 pt-1">
+                          +{todaySessions.length - 3} viac
                         </div>
-                        <div className="text-sm font-bold text-blue-900">
-                          {session.signups?.length || 0}/{session.capacity}
-                        </div>
-                      </button>
-                    ))}
-                    {todaySessions.length > 2 && (
-                      <div className="text-center text-sm text-blue-700">
-                        +{todaySessions.length - 2} viac tréningov
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -850,73 +813,71 @@ const TrainerCalendar = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="w-full">
       {/* Header */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-100">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
+      <div className="bg-white shadow-sm border-b border-gray-100">
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between">
             {/* Title and Today button */}
-            <div className="flex items-center justify-between sm:justify-start sm:space-x-4">
-              <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 truncate">
+            <div className="flex items-center space-x-3">
+              <h1 className="text-lg sm:text-xl font-semibold text-gray-900">
                 {getCalendarTitle()}
               </h1>
               <button
                 onClick={goToToday}
-                className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex-shrink-0"
+                className="px-2 py-1 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
               >
                 Dnes
               </button>
             </div>
 
             {/* Controls */}
-            <div className="flex items-center justify-between sm:justify-end sm:space-x-4">
+            <div className="flex items-center space-x-2">
               {/* View Mode Toggle */}
-              <div className="flex bg-gray-100 rounded-lg p-1">
+              <div className="flex bg-gray-100 rounded-lg p-0.5">
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors flex items-center space-x-1 ${
+                  className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center ${
                     viewMode === 'list' 
                       ? 'bg-white text-gray-900 shadow-sm font-medium' 
-                      : 'text-gray-600 hover:text-gray-900'
+                      : 'text-gray-600'
                   }`}
                 >
                   <ListBulletIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline">Zoznam</span>
                 </button>
                 <button
                   onClick={() => setViewMode('month')}
-                  className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors flex items-center space-x-1 ${
+                  className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center ${
                     viewMode === 'month' 
                       ? 'bg-white text-gray-900 shadow-sm font-medium' 
-                      : 'text-gray-600 hover:text-gray-900'
+                      : 'text-gray-600'
                   }`}
                 >
                   <CalendarIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline">Mesiac</span>
                 </button>
                 <button
                   onClick={() => setViewMode('week')}
-                  className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors hidden sm:flex items-center space-x-1 ${
+                  className={`px-2 py-1 text-xs rounded-md transition-colors hidden sm:flex items-center ${
                     viewMode === 'week' 
                       ? 'bg-white text-gray-900 shadow-sm font-medium' 
-                      : 'text-gray-600 hover:text-gray-900'
+                      : 'text-gray-600'
                   }`}
                 >
-                  <span>Týždeň</span>
+                  <span className="text-xs">T</span>
                 </button>
               </div>
               
               {/* Navigation */}
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center">
                 <button
                   onClick={previousPeriod}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors touch-manipulation"
+                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
                 >
                   <ChevronLeftIcon className="h-5 w-5" />
                 </button>
                 <button
                   onClick={nextPeriod}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors touch-manipulation"
+                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
                 >
                   <ChevronRightIcon className="h-5 w-5" />
                 </button>
@@ -928,7 +889,7 @@ const TrainerCalendar = () => {
         {/* Calendar Content with swipe support */}
         <div 
           ref={calendarRef}
-          className="p-4 sm:p-6"
+          className="pb-2"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -936,28 +897,6 @@ const TrainerCalendar = () => {
           {viewMode === 'list' ? renderListView() : 
            viewMode === 'week' ? renderWeekView() : 
            renderMonthView()}
-        </div>
-
-        {/* Legend - Hidden on mobile */}
-        <div className="hidden sm:block px-6 pb-6">
-          <div className="flex justify-center space-x-6 text-sm">
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-blue-500 rounded"></div>
-              <span>Individuálny tréning</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-green-500 rounded"></div>
-              <span>Skupinový tréning</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-red-500 rounded"></div>
-              <span>Zrušené</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-gray-400 rounded"></div>
-              <span>Dokončené</span>
-            </div>
-          </div>
         </div>
       </div>
 
