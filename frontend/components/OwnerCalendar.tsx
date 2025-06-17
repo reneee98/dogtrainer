@@ -52,6 +52,7 @@ const OwnerCalendar = () => {
   const [touchStartX, setTouchStartX] = useState(0);
   const [touchEndX, setTouchEndX] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const calendarRef = useRef<HTMLDivElement>(null);
 
   // Auto-select best view mode based on screen size
@@ -461,6 +462,16 @@ const OwnerCalendar = () => {
   const renderWeekView = () => {
     const weekDays = getWeekDays();
 
+    const toggleDayExpansion = (dayKey: string) => {
+      const newExpanded = new Set(expandedDays);
+      if (newExpanded.has(dayKey)) {
+        newExpanded.delete(dayKey);
+      } else {
+        newExpanded.add(dayKey);
+      }
+      setExpandedDays(newExpanded);
+    };
+
     return (
       <div className="space-y-4">
         {/* Day headers - Horizontal scroll on mobile */}
@@ -501,13 +512,20 @@ const OwnerCalendar = () => {
                         <div
                           key={session.id}
                           onClick={() => handleSessionClick(session)}
-                          className={`p-3 rounded-lg cursor-pointer transition-all active:scale-[0.98] ${getSessionTypeColor(session.session_type)} text-white`}
+                          className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors"
                         >
-                          <div className="font-medium text-sm">{session.title}</div>
-                          <div className="text-xs opacity-90">
-                            {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                          <div className="flex items-center space-x-3">
+                            <div className="text-sm font-medium text-gray-900">
+                              {formatTime(session.start_time)}
+                            </div>
+                            <div className="text-sm text-gray-900">
+                              {session.title}
+                            </div>
                           </div>
-                          <div className="text-xs opacity-75">{session.location}</div>
+                          <div className={`w-2 h-2 rounded-full ${
+                            session.session_type === 'individual' ? 'bg-blue-500' :
+                            session.session_type === 'group' ? 'bg-green-500' : 'bg-purple-500'
+                          }`} />
                         </div>
                       ))}
                     </div>
@@ -522,6 +540,10 @@ const OwnerCalendar = () => {
             {weekDays.map((day, index) => {
               const daySessions = getSessionsForDate(day);
               const isTodayDay = isToday(day);
+              const dayKey = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
+              const isExpanded = expandedDays.has(dayKey);
+              const visibleSessions = isExpanded ? daySessions : daySessions.slice(0, 3);
+              const hasMore = daySessions.length > 3;
 
               return (
                 <div
@@ -531,33 +553,50 @@ const OwnerCalendar = () => {
                     ${isTodayDay ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'}
                   `}
                 >
-                  <div className="space-y-2">
-                    {daySessions.slice(0, 4).map((session) => (
+                  <div className="space-y-1">
+                    {visibleSessions.map((session) => (
                       <button
                         key={session.id}
                         onClick={() => handleSessionClick(session)}
                         className={`
-                          w-full text-left p-2 lg:p-3 rounded-lg transition-all hover:scale-105 cursor-pointer
-                          ${getSessionTypeColor(session.session_type)} text-white
+                          w-full text-left p-2 rounded-md transition-all hover:scale-[1.02] cursor-pointer border
+                          ${session.session_type === 'individual' 
+                            ? 'bg-blue-50 border-blue-200 hover:bg-blue-100' 
+                            : session.session_type === 'group'
+                            ? 'bg-green-50 border-green-200 hover:bg-green-100'
+                            : 'bg-purple-50 border-purple-200 hover:bg-purple-100'
+                          }
                         `}
                       >
-                        <div className="font-medium text-xs lg:text-sm">{session.title}</div>
-                        <div className="text-xs opacity-90">
-                          {formatTime(session.start_time)} - {formatTime(session.end_time)}
-                        </div>
-                        <div className="text-xs opacity-75 truncate">{session.location}</div>
-                        <div className="text-xs opacity-90 mt-1">
-                          {session.available_spots !== undefined ? 
-                            `${session.capacity - session.available_spots}/${session.capacity}` :
-                            `${session.capacity} miest`
-                          }
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium text-gray-900 truncate pr-2">
+                              {session.title}
+                            </div>
+                            <div className="text-xs text-gray-600 mt-0.5">
+                              {session.available_spots !== undefined ? 
+                                `${session.capacity - session.available_spots}/${session.capacity}` :
+                                `${session.capacity} miest`
+                              }
+                            </div>
+                          </div>
+                          <div className="text-xs font-medium text-gray-700 flex-shrink-0">
+                            {formatTime(session.start_time)}
+                          </div>
                         </div>
                       </button>
                     ))}
-                    {daySessions.length > 4 && (
-                      <div className="text-xs text-gray-500 p-2 text-center bg-gray-50 rounded-lg">
-                        +{daySessions.length - 4} ďalších
-                      </div>
+                    
+                    {hasMore && (
+                      <button
+                        onClick={() => toggleDayExpansion(dayKey)}
+                        className="w-full text-xs text-gray-500 p-2 text-center bg-gray-50 hover:bg-gray-100 rounded-md transition-colors border border-gray-200"
+                      >
+                        {isExpanded 
+                          ? `Skryť ${daySessions.length - 3} ${daySessions.length - 3 === 1 ? 'tréning' : daySessions.length - 3 <= 4 ? 'tréningy' : 'tréningov'}`
+                          : `+${daySessions.length - 3} ${daySessions.length - 3 === 1 ? 'ďalší' : 'ďalších'}`
+                        }
+                      </button>
                     )}
                   </div>
                 </div>
