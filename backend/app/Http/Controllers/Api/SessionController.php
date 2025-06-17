@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Session;
 use App\Models\SessionSignup;
 use App\Models\SessionWaitlist;
+use App\Models\TrainerClient;
 use App\Models\Dog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +27,13 @@ class SessionController extends Controller
             // Filter by user role
             if ($user->isTrainer()) {
                 $query->where('trainer_id', $user->id);
+            } elseif ($user->isOwner()) {
+                // Only show sessions from approved trainers
+                $approvedTrainerIds = TrainerClient::where('client_id', $user->id)
+                    ->where('status', 'approved')
+                    ->pluck('trainer_id');
+                
+                $query->whereIn('trainer_id', $approvedTrainerIds);
             }
 
             // Apply filters
