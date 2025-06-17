@@ -843,9 +843,9 @@ const TrainerCalendar = () => {
   }
 
   return (
-    <div className="w-full">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-100">
+      <div className="bg-white shadow-sm border border-gray-200 rounded-lg mb-4">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
             {/* Title and Today button */}
