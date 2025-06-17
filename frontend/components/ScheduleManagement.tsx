@@ -11,19 +11,21 @@ import {
   PowerIcon,
   PlayIcon,
   UserGroupIcon,
-  CurrencyEuroIcon
+  CurrencyEuroIcon,
+  MapPinIcon
 } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { sk } from 'date-fns/locale';
 
 interface DaycareSchedule {
   id: number;
-  name: string;
+  title: string;
   description: string;
+  location: string;
   start_time: string;
   end_time: string;
   capacity: number;
-  price_per_day: number;
+  price: number;
   days_of_week: number[];
   valid_from: string;
   valid_until: string;
@@ -61,7 +63,22 @@ export default function ScheduleManagement() {
       }
 
       const result = await response.json();
-      return Array.isArray(result) ? result : (result.data || []);
+      console.log('API Response:', result);
+      
+      // Handle both paginated and direct array responses
+      if (result.success && result.data) {
+        // Paginated response
+        if (result.data.data && Array.isArray(result.data.data)) {
+          return result.data.data;
+        }
+        // Direct array
+        if (Array.isArray(result.data)) {
+          return result.data;
+        }
+      }
+      
+      // Fallback
+      return Array.isArray(result) ? result : [];
     },
     enabled: !!token,
   });
@@ -228,7 +245,7 @@ export default function ScheduleManagement() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-semibold text-gray-900 text-lg">
-                      {schedule.name}
+                      {schedule.title}
                     </h3>
                     <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-2 ${
                       schedule.is_active
@@ -279,6 +296,11 @@ export default function ScheduleManagement() {
                 <p className="text-gray-600 text-sm">{schedule.description}</p>
 
                 <div className="flex items-center text-sm text-gray-500">
+                  <MapPinIcon className="h-4 w-4 mr-2" />
+                  {schedule.location}
+                </div>
+
+                <div className="flex items-center text-sm text-gray-500">
                   <ClockIcon className="h-4 w-4 mr-2" />
                   {schedule.start_time} - {schedule.end_time}
                 </div>
@@ -290,7 +312,7 @@ export default function ScheduleManagement() {
 
                 <div className="flex items-center text-sm text-gray-500">
                   <CurrencyEuroIcon className="h-4 w-4 mr-2" />
-                  {schedule.price_per_day}€ za deň
+                  {schedule.price}€ za deň
                 </div>
 
                 <div className="flex items-center text-sm text-gray-500">
@@ -365,7 +387,7 @@ export default function ScheduleManagement() {
                 Generovať relácie
               </h3>
               <p className="text-sm text-gray-600 mt-1">
-                Pre rozvrh: {showGenerateModal.name}
+                Pre rozvrh: {showGenerateModal.title}
               </p>
             </div>
 

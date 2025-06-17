@@ -13,12 +13,13 @@ import {
 
 interface DaycareSchedule {
   id: number;
-  name: string;
+  title: string;
   description: string;
+  location: string;
   start_time: string;
   end_time: string;
   capacity: number;
-  price_per_day: number;
+  price: number;
   days_of_week: number[];
   valid_from: string;
   valid_until: string;
@@ -50,12 +51,13 @@ export function DaycareScheduleForm({ schedule, onClose, onSuccess }: DaycareSch
   const isEditing = !!schedule;
 
   const [formData, setFormData] = useState({
-    name: schedule?.name || '',
+    title: schedule?.title || '',
     description: schedule?.description || '',
+    location: schedule?.location || '',
     start_time: schedule?.start_time || '09:00',
     end_time: schedule?.end_time || '17:00',
     capacity: schedule?.capacity || 10,
-    price_per_day: schedule?.price_per_day || 50,
+    price: schedule?.price || 50,
     days_of_week: schedule?.days_of_week || [],
     valid_from: schedule?.valid_from || new Date().toISOString().split('T')[0],
     valid_until: schedule?.valid_until || '',
@@ -129,20 +131,24 @@ export function DaycareScheduleForm({ schedule, onClose, onSuccess }: DaycareSch
     // Validation
     const newErrors: Record<string, string> = {};
     
-    if (!formData.name.trim()) {
-      newErrors.name = 'Názov je povinný';
+    if (!formData.title.trim()) {
+      newErrors.title = 'Názov je povinný';
     }
     
     if (!formData.description.trim()) {
       newErrors.description = 'Popis je povinný';
     }
     
+    if (!formData.location.trim()) {
+      newErrors.location = 'Miesto je povinné';
+    }
+    
     if (formData.capacity < 1) {
       newErrors.capacity = 'Kapacita musí byť aspoň 1';
     }
     
-    if (formData.price_per_day < 0) {
-      newErrors.price_per_day = 'Cena nemôže byť záporná';
+    if (formData.price < 0) {
+      newErrors.price = 'Cena nemôže byť záporná';
     }
     
     if (formData.days_of_week.length === 0) {
@@ -194,14 +200,14 @@ export function DaycareScheduleForm({ schedule, onClose, onSuccess }: DaycareSch
               </label>
               <input
                 type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.name ? 'border-red-300' : 'border-gray-300'
+                  errors.title ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="Ranný rozvrh"
               />
-              {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
+              {errors.title && <p className="text-red-600 text-sm mt-1">{errors.title}</p>}
             </div>
 
             <div>
@@ -236,6 +242,23 @@ export function DaycareScheduleForm({ schedule, onClose, onSuccess }: DaycareSch
               placeholder="Popis denného pobytu..."
             />
             {errors.description && <p className="text-red-600 text-sm mt-1">{errors.description}</p>}
+          </div>
+
+          {/* Location */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Miesto *
+            </label>
+            <input
+              type="text"
+              value={formData.location}
+              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                errors.location ? 'border-red-300' : 'border-gray-300'
+              }`}
+              placeholder="Miesto konania (napr. Tréningové centrum, Park...)"
+            />
+            {errors.location && <p className="text-red-600 text-sm mt-1">{errors.location}</p>}
           </div>
 
           {/* Time */}
@@ -275,13 +298,13 @@ export function DaycareScheduleForm({ schedule, onClose, onSuccess }: DaycareSch
                 type="number"
                 min="0"
                 step="0.01"
-                value={formData.price_per_day}
-                onChange={(e) => setFormData({ ...formData, price_per_day: parseFloat(e.target.value) || 0 })}
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.price_per_day ? 'border-red-300' : 'border-gray-300'
+                  errors.price ? 'border-red-300' : 'border-gray-300'
                 }`}
               />
-              {errors.price_per_day && <p className="text-red-600 text-sm mt-1">{errors.price_per_day}</p>}
+              {errors.price && <p className="text-red-600 text-sm mt-1">{errors.price}</p>}
             </div>
 
             <div>
