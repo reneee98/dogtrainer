@@ -138,7 +138,7 @@ const OwnerCalendar = () => {
   };
 
   const isSessionFull = (session: Session): boolean => {
-    return (session.available_spots || 0) <= 0;
+    return session.available_spots !== undefined && session.available_spots <= 0;
   };
 
   const isUserSignedUp = (session: Session): boolean => {
@@ -309,7 +309,7 @@ const OwnerCalendar = () => {
                 `}
               >
                 <div className="space-y-2">
-                  {daySessions.map((session) => (
+                  {daySessions.slice(0, 6).map((session) => (
                     <button
                       key={session.id}
                       onClick={() => handleSessionClick(session)}
@@ -324,10 +324,18 @@ const OwnerCalendar = () => {
                       </div>
                       <div className="text-xs opacity-75">{session.location}</div>
                       <div className="text-xs opacity-90 mt-1">
-                        {session.capacity - (session.available_spots || 0)}/{session.capacity} obsadené
+                        {session.available_spots !== undefined ? 
+                          `${session.capacity - session.available_spots}/${session.capacity} obsadené` :
+                          `${session.capacity} miest`
+                        }
                       </div>
                     </button>
                   ))}
+                  {daySessions.length > 6 && (
+                    <div className="text-sm text-gray-500 p-3 text-center bg-gray-50 rounded-lg">
+                      +{daySessions.length - 6} ďalších tréningov
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -548,7 +556,10 @@ const OwnerCalendar = () => {
                     <div className="flex justify-between">
                       <span>Kapacita:</span>
                       <span className="font-medium">
-                        {selectedSession.capacity - (selectedSession.available_spots || 0)}/{selectedSession.capacity}
+                        {selectedSession.available_spots !== undefined ? 
+                          `${selectedSession.capacity - selectedSession.available_spots}/${selectedSession.capacity}` :
+                          `${selectedSession.capacity} miest`
+                        }
                       </span>
                     </div>
                     <div className="flex justify-between">

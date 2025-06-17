@@ -58,11 +58,32 @@ class SessionController extends Controller
             }
 
             $sessions = $query->orderBy('start_time')
-                             ->paginate(20);
+                             ->get();
+
+            // Transform sessions to include available_spots
+            $transformedSessions = $sessions->map(function ($session) {
+                return [
+                    'id' => $session->id,
+                    'title' => $session->title,
+                    'description' => $session->description,
+                    'location' => $session->location,
+                    'start_time' => $session->start_time,
+                    'end_time' => $session->end_time,
+                    'capacity' => $session->capacity,
+                    'price' => $session->price,
+                    'session_type' => $session->session_type,
+                    'status' => $session->status,
+                    'waitlist_enabled' => $session->waitlist_enabled,
+                    'trainer' => $session->trainer,
+                    'signups' => $session->signups,
+                    'waitlist' => $session->waitlist,
+                    'available_spots' => $session->available_spots, // This triggers the accessor
+                ];
+            });
 
             return response()->json([
                 'success' => true,
-                'data' => $sessions,
+                'data' => $transformedSessions,
             ]);
 
         } catch (\Exception $e) {

@@ -262,7 +262,7 @@ const TrainerCalendar = () => {
                 `}
               >
                 <div className="space-y-2">
-                  {daySessions.map((session) => (
+                  {daySessions.slice(0, 6).map((session) => (
                     <button
                       key={session.id}
                       onClick={() => handleSessionClick(session)}
@@ -283,6 +283,11 @@ const TrainerCalendar = () => {
                       )}
                     </button>
                   ))}
+                  {daySessions.length > 6 && (
+                    <div className="text-sm text-gray-500 p-3 text-center bg-gray-50 rounded-lg">
+                      +{daySessions.length - 6} ďalších tréningov
+                    </div>
+                  )}
                 </div>
 
                 {/* Plus Icon for Creating New Session */}
