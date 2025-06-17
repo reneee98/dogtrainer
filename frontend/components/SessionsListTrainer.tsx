@@ -20,6 +20,7 @@ interface Session {
   price: number;
   waitlist_enabled: boolean;
   available_spots?: number;
+  signups?: { id: string }[];
 }
 
 export default function SessionsListTrainer() {
@@ -208,7 +209,7 @@ export default function SessionsListTrainer() {
                   <span className="font-medium">Kapacita:</span> {session.capacity}
                 </div>
                 <div>
-                  <span className="font-medium">Cena:</span> €{session.price}
+                  <span className="font-medium">Cena:</span> {session.price}€
                 </div>
                 {session.description && (
                   <div>
