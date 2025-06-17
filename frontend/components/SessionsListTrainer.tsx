@@ -134,8 +134,8 @@ export default function SessionsListTrainer() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 px-4">
+      <div className="flex justify-between items-center px-4 py-3">
         <h2 className="text-2xl font-bold text-gray-900">Moje tréningové relácie</h2>
         <button
           onClick={() => setShowForm(true)}
@@ -147,8 +147,8 @@ export default function SessionsListTrainer() {
       </div>
 
       {!sessions || sessions.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-gray-500 mb-4">Zatiaľ nemáte žiadne relácie</div>
+        <div className="text-center py-6">
+          <div className="text-gray-500 mb-2">Zatiaľ nemáte žiadne relácie</div>
           <button
             onClick={() => setShowForm(true)}
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
@@ -157,12 +157,12 @@ export default function SessionsListTrainer() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {sessions.map((session: Session) => (
-            <div key={session.id} className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-              <div className="flex justify-between items-start mb-4">
+            <div key={session.id} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+              <div className="flex justify-between items-start mb-2">
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{session.title}</h3>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-1">{session.title}</h3>
                   <span className={`inline-block px-2 py-1 text-xs rounded-full ${getStatusColor(session.status)}`}>
                     {getStatusText(session.status)}
                   </span>

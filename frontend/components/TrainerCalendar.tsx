@@ -340,7 +340,7 @@ const TrainerCalendar = () => {
 
     return (
       <div className="space-y-4">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center p-4">
           <h2 className="text-lg font-semibold text-gray-900">Vaše tréningy</h2>
           <button
             onClick={() => handleCreateSessionClick(new Date())}
