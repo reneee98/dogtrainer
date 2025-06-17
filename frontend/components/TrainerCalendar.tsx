@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { apiRequest, serviceTemplateApi } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
-import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PlusIcon, CalendarIcon, ListBulletIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PlusIcon, CalendarIcon, ListBulletIcon, PencilIcon, TrashIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import SessionForm from './SessionForm';
 
 interface Session {
@@ -370,6 +370,32 @@ const TrainerCalendar = () => {
     }
   };
 
+  const isSessionCompleted = (session: Session) => {
+    const now = new Date();
+    const sessionEndTime = new Date(session.end_time);
+    return now > sessionEndTime;
+  };
+
+  const getDisplayStatus = (session: Session) => {
+    if (isSessionCompleted(session)) {
+      return (
+        <div className="flex items-center space-x-1 text-green-700">
+          <CheckCircleIcon className="h-3 w-3" />
+          <span>Hotovo</span>
+        </div>
+      );
+    }
+    return getStatusLabel(session.status);
+  };
+
+  const getSessionDisplayClass = (session: Session) => {
+    const isCompleted = isSessionCompleted(session);
+    if (isCompleted) {
+      return 'opacity-70 cursor-pointer hover:opacity-80 bg-gray-50';
+    }
+    return 'cursor-pointer hover:shadow-md hover:bg-gray-50 active:scale-[0.99]';
+  };
+
   const previousPeriod = () => {
     if (viewMode === 'week') {
       const newDate = new Date(currentDate);
@@ -485,7 +511,7 @@ const TrainerCalendar = () => {
       );
     }
 
-        return (
+    return (
       <div className="space-y-4">
         {/* Action button */}
         <div className="flex justify-end px-1 mb-4">
@@ -520,7 +546,7 @@ const TrainerCalendar = () => {
               <div
                 key={session.id}
                 onClick={() => handleSessionClick(session)}
-                className="bg-white rounded-lg border border-gray-200 transition-all duration-200 cursor-pointer hover:shadow-md hover:bg-gray-50 active:scale-[0.99]"
+                className={`bg-white rounded-lg border border-gray-200 p-4 transition-all duration-200 ${getSessionDisplayClass(session)}`}
               >
                 <div className="grid grid-cols-12 gap-3 p-3 items-center">
                   {/* Service */}
@@ -530,12 +556,13 @@ const TrainerCalendar = () => {
                       <div className="text-sm font-medium truncate text-gray-900">
                         {getSessionLabel(session)}
                       </div>
-                      <div className={`text-xs px-1.5 py-0.5 rounded-full inline-block ${
+                      <div className={`text-xs px-1.5 py-0.5 rounded-full inline-flex items-center ${
+                        isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
                         session.status === 'scheduled' ? 'bg-green-100 text-green-700' :
                         session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
                         'bg-red-100 text-red-700'
                       }`}>
-                        {getStatusLabel(session.status)}
+                        {getDisplayStatus(session)}
                       </div>
                     </div>
                   </div>
@@ -620,7 +647,7 @@ const TrainerCalendar = () => {
             <div
               key={session.id}
               onClick={() => handleSessionClick(session)}
-              className="bg-white rounded-lg border border-gray-200 p-4 transition-all duration-200 cursor-pointer hover:shadow-md active:scale-[0.98]"
+              className={`bg-white rounded-lg border border-gray-200 p-4 transition-all duration-200 ${getSessionDisplayClass(session)}`}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center space-x-2">
@@ -628,12 +655,13 @@ const TrainerCalendar = () => {
                   <div className="font-medium text-gray-900">
                     {getSessionLabel(session)}
                   </div>
-                  <div className={`text-xs px-2 py-0.5 rounded-full ${
+                  <div className={`text-xs px-2 py-0.5 rounded-full inline-flex items-center ${
+                    isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
                     session.status === 'scheduled' ? 'bg-green-100 text-green-700' :
                     session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
                     'bg-red-100 text-red-700'
                   }`}>
-                    {getStatusLabel(session.status)}
+                    {getDisplayStatus(session)}
                   </div>
                 </div>
                 <div className="text-lg font-semibold text-gray-900">
@@ -732,130 +760,122 @@ const TrainerCalendar = () => {
           })}
         </div>
 
-        {/* Sessions - Responsive grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-7 gap-2 sm:gap-1">
+        {/* Mobile: List view of sessions */}
+        <div className="sm:hidden space-y-4">
           {weekDays.map((day, index) => {
             const daySessions = getSessionsForDate(day);
             const isTodayDay = isToday(day);
 
             return (
-              <div key={index} className="sm:hidden">
-                {/* Mobile: Show day sessions in list format */}
-                {daySessions.length > 0 && (
-                  <div className="mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="text-sm font-medium text-gray-700">
-                        {weekDayNames[index]}, {day.getDate()}. {monthNames[day.getMonth()]}
-                      </h3>
-                      <button
-                        onClick={() => handleCreateSessionClick(day)}
-                        className="p-1 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+              <div key={index}>
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-sm font-medium text-gray-700">
+                    {weekDayNames[index]}, {day.getDate()}. {monthNames[day.getMonth()]}
+                  </h3>
+                  <button
+                    onClick={() => handleCreateSessionClick(day)}
+                    className="p-1 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                  </button>
+                </div>
+                
+                {daySessions.length > 0 ? (
+                  <div className="space-y-2">
+                    {daySessions.map((session) => (
+                      <div
+                        key={session.id}
+                        onClick={() => handleSessionClick(session)}
+                        className={`p-3 rounded-lg transition-all active:scale-[0.98] bg-gray-100 border border-gray-200 ${getSessionDisplayClass(session)}`}
                       >
-                        <PlusIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      {daySessions.map((session) => (
-                        <div
-                          key={session.id}
-                          onClick={() => handleSessionClick(session)}
-                          className="p-3 rounded-lg cursor-pointer transition-all active:scale-[0.98] bg-gray-100 border border-gray-200"
-                                                  >
-                            <div className="flex items-center space-x-2 mb-2">
-                              <div className={`w-2 h-2 rounded-full ${getSessionColor(session)}`}></div>
-                              <div className="font-medium text-sm text-gray-900">{getSessionLabel(session)}</div>
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              {formatTime(session.start_time)} - {formatTime(session.end_time)}
-                            </div>
-                            <div className="text-xs text-gray-600">{session.location}</div>
-                            {session.signups && (
-                              <div className="text-xs text-gray-600 mt-1">
-                                {session.signups.length}/{session.capacity} účastníkov
-                              </div>
-                            )}
+                        <div className="flex items-center space-x-2 mb-2">
+                          <div className={`w-2 h-2 rounded-full ${getSessionColor(session)}`}></div>
+                          <div className="font-medium text-sm text-gray-900">{getSessionLabel(session)}</div>
+                          <div className={`text-xs px-2 py-0.5 rounded-full inline-flex items-center ${
+                            isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
+                            session.status === 'scheduled' ? 'bg-green-100 text-green-700' :
+                            session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {getDisplayStatus(session)}
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                        <div className="text-xs text-gray-600">
+                          {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                        </div>
+                        <div className="text-xs text-gray-600">{session.location}</div>
+                        {session.signups && (
+                          <div className="text-xs text-gray-600 mt-1">
+                            {session.signups.length}/{session.capacity} účastníkov
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                )}
-                {daySessions.length === 0 && (
-                  <div className="mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="text-sm font-medium text-gray-700">
-                        {weekDayNames[index]}, {day.getDate()}. {monthNames[day.getMonth()]}
-                      </h3>
-                      <button
-                        onClick={() => handleCreateSessionClick(day)}
-                        className="p-1 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
-                      >
-                        <PlusIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="text-sm text-gray-500 italic">Žiadne tréningy</div>
+                ) : (
+                  <div className="text-sm text-gray-500 italic p-4 bg-gray-50 rounded-lg">
+                    Žiadne tréningy
                   </div>
                 )}
               </div>
             );
           })}
+        </div>
 
-          {/* Desktop/Tablet: Traditional week grid */}
-          <div className="hidden sm:grid sm:grid-cols-7 sm:gap-1 sm:col-span-7">
-            {weekDays.map((day, index) => {
-              const daySessions = getSessionsForDate(day);
-              const isTodayDay = isToday(day);
-              // Always show all sessions for the day
-              const visibleSessions = daySessions;
+        {/* Desktop/Tablet: Traditional week grid */}
+        <div className="hidden sm:grid sm:grid-cols-7 sm:gap-1">
+          {weekDays.map((day, index) => {
+            const daySessions = getSessionsForDate(day);
+            const isTodayDay = isToday(day);
 
-              return (
-                <div
-                  key={index}
-                  className={`
-                    min-h-[300px] lg:min-h-[400px] p-2 lg:p-3 rounded-lg border transition-all relative group
-                    ${isTodayDay ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'}
-                  `}
-                >
-                  {/* Create session button for desktop week view */}
-                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            return (
+              <div
+                key={index}
+                className={`
+                  min-h-[300px] lg:min-h-[400px] p-2 lg:p-3 rounded-lg border transition-all relative group
+                  ${isTodayDay ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'}
+                `}
+              >
+                {/* Create session button for desktop week view */}
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <button
+                    onClick={() => handleCreateSessionClick(day)}
+                    className="p-1.5 rounded-full bg-blue-500 text-white hover:bg-blue-600 hover:scale-110 transform transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    title="Vytvoriť nový tréning"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                  </button>
+                </div>
+                
+                <div className="space-y-1">
+                  {daySessions.map((session) => (
                     <button
-                      onClick={() => handleCreateSessionClick(day)}
-                      className="p-1.5 rounded-full bg-blue-500 text-white hover:bg-blue-600 hover:scale-110 transform transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                      title="Vytvoriť nový tréning"
+                      key={session.id}
+                      onClick={() => handleSessionClick(session)}
+                      className={`w-full p-2 rounded-lg transition-all active:scale-[0.98] bg-gray-100 border border-gray-200 ${getSessionDisplayClass(session)}`}
                     >
-                      <PlusIcon className="h-4 w-4" />
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    {visibleSessions.map((session) => (
-                      <button
-                        key={session.id}
-                        onClick={() => handleSessionClick(session)}
-                        className="w-full text-left p-2 rounded-md transition-all hover:scale-[1.02] cursor-pointer border border-gray-200 bg-gray-50 hover:bg-gray-100"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start space-x-2 flex-1 min-w-0">
-                            <div className={`w-2 h-2 rounded-full ${getSessionColor(session)} flex-shrink-0 mt-1`}></div>
-                            <div className="flex-1 min-w-0">
-                                                          <div className="text-xs font-medium text-gray-900 truncate pr-2">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-2 flex-1 min-w-0">
+                          <div className={`w-2 h-2 rounded-full ${getSessionColor(session)} flex-shrink-0 mt-1`}></div>
+                          <div className="flex-1 min-w-0 text-left">
+                            <div className="text-xs font-medium text-gray-900 truncate">
                               {getSessionLabel(session)}
                             </div>
-                              <div className="text-xs text-gray-600 mt-0.5">
-                                {session.signups?.length || 0}/{session.capacity} účastníkov
-                              </div>
+                            <div className="text-xs text-gray-600 mt-0.5">
+                              {session.signups?.length || 0}/{session.capacity}
                             </div>
                           </div>
-                          <div className="text-xs font-medium text-gray-700 flex-shrink-0">
-                            {formatTime(session.start_time)}
-                          </div>
                         </div>
-                      </button>
-                    ))}
-                  </div>
+                        <div className="text-xs font-medium text-gray-700 flex-shrink-0">
+                          {formatTime(session.start_time)}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -969,7 +989,7 @@ const TrainerCalendar = () => {
                       <div key={session.id} className="text-xs text-left p-1">
                         <div className="font-medium text-gray-900 truncate">{session.title}</div>
                         <div className="text-gray-500">{formatTime(session.start_time)}</div>
-                        <div className="text-gray-400">{getStatusLabel(session.status)}</div>
+                        <div className="text-gray-400 flex items-center">{getDisplayStatus(session)}</div>
                       </div>
                     ))}
                     {daySessions.length > 3 && (
@@ -1021,7 +1041,7 @@ const TrainerCalendar = () => {
                   <button
                     key={session.id}
                     onClick={() => handleSessionClick(session)}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                    className={getSessionDisplayClass(session)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
@@ -1062,18 +1082,20 @@ const TrainerCalendar = () => {
                         <button
                           key={session.id}
                           onClick={() => handleSessionClick(session)}
-                          className="w-full flex items-center justify-between py-2 hover:bg-blue-100 rounded-md transition-colors"
+                          className={getSessionDisplayClass(session)}
                         >
-                          <div className="flex items-center space-x-3">
-                            <div className="text-sm font-medium text-blue-900">
-                              {formatTime(session.start_time)}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="text-sm font-medium text-blue-900">
+                                {formatTime(session.start_time)}
+                              </div>
+                              <div className="text-sm text-blue-800">
+                                {session.title}
+                              </div>
                             </div>
-                            <div className="text-sm text-blue-800">
-                              {session.title}
+                            <div className="text-xs text-blue-700">
+                              {session.signups?.length || 0}/{session.capacity}
                             </div>
-                          </div>
-                          <div className="text-xs text-blue-700">
-                            {session.signups?.length || 0}/{session.capacity}
                           </div>
                         </button>
                       ))}
@@ -1212,12 +1234,13 @@ const TrainerCalendar = () => {
                     </div>
                     <div className="flex items-center space-x-2">
                       <span className={`
-                        inline-block px-3 py-1 rounded-full text-sm font-medium
-                        ${selectedSession.status === 'scheduled' ? 'bg-green-100 text-green-800' :
+                        inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                        ${isSessionCompleted(selectedSession) ? 'bg-green-100 text-green-800' :
+                          selectedSession.status === 'scheduled' ? 'bg-green-100 text-green-800' :
                           selectedSession.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                           'bg-gray-100 text-gray-800'}
                       `}>
-                        {getStatusLabel(selectedSession.status)}
+                        {getDisplayStatus(selectedSession)}
                       </span>
                     </div>
                   </div>
