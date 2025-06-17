@@ -35,6 +35,7 @@ interface Session {
 
 interface SessionFormProps {
   session?: Session | null;
+  date?: Date | null;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -47,9 +48,32 @@ const calculateDuration = (startTime: string, endTime: string): number => {
   return Math.round(diffInHours);
 };
 
-export default function SessionForm({ session, onClose, onSuccess }: SessionFormProps) {
+export default function SessionForm({ session, date, onClose, onSuccess }: SessionFormProps) {
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
+
+  // Helper function to format date for datetime-local input
+  const formatDateForInput = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Default start time - if date is provided, use it at 9:00 AM, otherwise use current session time or empty
+  const getDefaultStartTime = (): string => {
+    if (session?.start_time) {
+      return new Date(session.start_time).toISOString().slice(0, 16);
+    }
+    if (date) {
+      const defaultDate = new Date(date);
+      defaultDate.setHours(9, 0, 0, 0); // Set to 9:00 AM
+      return formatDateForInput(defaultDate);
+    }
+    return '';
+  };
 
   const { register, handleSubmit, formState: { errors }, watch } = useForm<SessionFormData>({
     resolver: zodResolver(sessionSchema),
@@ -58,7 +82,7 @@ export default function SessionForm({ session, onClose, onSuccess }: SessionForm
       description: session?.description || '',
       location: session?.location || '',
       session_type: session?.session_type || 'individual',
-      start_time: session?.start_time ? new Date(session.start_time).toISOString().slice(0, 16) : '',
+      start_time: getDefaultStartTime(),
       duration: session?.start_time && session?.end_time 
         ? calculateDuration(session.start_time, session.end_time)
         : 1,

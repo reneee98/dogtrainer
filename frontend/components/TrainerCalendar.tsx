@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
-import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
+import SessionForm from './SessionForm';
 
 interface Session {
   id: string;
@@ -27,6 +28,8 @@ const TrainerCalendar = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [showSessionModal, setShowSessionModal] = useState(false);
+  const [showSessionForm, setShowSessionForm] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -66,6 +69,22 @@ const TrainerCalendar = () => {
   const handleSessionClick = (session: Session) => {
     setSelectedSession(session);
     setShowSessionModal(true);
+  };
+
+  const handleCreateSessionClick = (date: Date) => {
+    setSelectedDate(date);
+    setShowSessionForm(true);
+  };
+
+  const handleSessionFormClose = () => {
+    setShowSessionForm(false);
+    setSelectedDate(null);
+  };
+
+  const handleSessionFormSuccess = () => {
+    setShowSessionForm(false);
+    setSelectedDate(null);
+    fetchSessions(); // Refresh sessions after creating/updating
   };
 
   const getSessionsForDate = (date: Date) => {
@@ -237,7 +256,8 @@ const TrainerCalendar = () => {
               <div
                 key={index}
                 className={`
-                  min-h-[400px] p-3 rounded-lg border transition-all
+                  relative min-h-[400px] p-3 rounded-lg border transition-all
+                  hover:border-gray-200 hover:shadow-sm group
                   ${isTodayDay ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'}
                 `}
               >
@@ -264,6 +284,20 @@ const TrainerCalendar = () => {
                     </button>
                   ))}
                 </div>
+
+                {/* Plus Icon for Creating New Session */}
+                <button
+                  onClick={() => handleCreateSessionClick(day)}
+                  className="
+                    absolute top-3 right-3 p-2 rounded-full bg-blue-500 text-white
+                    opacity-0 group-hover:opacity-100 transition-all duration-200
+                    hover:bg-blue-600 hover:scale-110 transform
+                    focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                  "
+                  title="Vytvoriť nový tréning"
+                >
+                  <PlusIcon className="h-5 w-5" />
+                </button>
               </div>
             );
           })}
@@ -297,7 +331,8 @@ const TrainerCalendar = () => {
               <div
                 key={index}
                 className={`
-                  min-h-[100px] p-2 border border-gray-50 rounded-lg transition-all hover:bg-gray-25
+                  relative min-h-[100px] p-2 border border-gray-50 rounded-lg transition-all 
+                  hover:bg-gray-25 hover:border-gray-200 hover:shadow-sm group
                   ${!isCurrentMonthDay ? 'opacity-30' : ''}
                   ${isTodayDay ? 'bg-blue-50 border-blue-200' : 'bg-white'}
                 `}
@@ -332,6 +367,22 @@ const TrainerCalendar = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Plus Icon for Creating New Session */}
+                {isCurrentMonthDay && (
+                  <button
+                    onClick={() => handleCreateSessionClick(date)}
+                    className="
+                      absolute top-2 right-2 p-1 rounded-full bg-blue-500 text-white
+                      opacity-0 group-hover:opacity-100 transition-all duration-200
+                      hover:bg-blue-600 hover:scale-110 transform
+                      focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                    "
+                    title="Vytvoriť nový tréning"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             );
           })}
@@ -538,6 +589,15 @@ const TrainerCalendar = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Session Form Modal */}
+      {showSessionForm && selectedDate && (
+        <SessionForm
+          date={selectedDate}
+          onClose={handleSessionFormClose}
+          onSuccess={handleSessionFormSuccess}
+        />
       )}
     </div>
   );
