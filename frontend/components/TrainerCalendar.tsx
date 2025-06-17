@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { apiRequest } from '../lib/api';
+import { apiRequest, serviceTemplateApi } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PlusIcon, CalendarIcon, ListBulletIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import SessionForm from './SessionForm';
@@ -19,6 +19,15 @@ interface Session {
   signups?: any[];
 }
 
+interface ServiceTemplate {
+  id: number;
+  name: string;
+  color: string;
+  duration: number;
+  price: number;
+  description?: string;
+}
+
 type ViewMode = 'list' | 'month' | 'week';
 
 const TrainerCalendar = () => {
@@ -34,6 +43,7 @@ const TrainerCalendar = () => {
   const [touchStartX, setTouchStartX] = useState(0);
   const [touchEndX, setTouchEndX] = useState(0);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const [serviceTemplates, setServiceTemplates] = useState<ServiceTemplate[]>([]);
   const calendarRef = useRef<HTMLDivElement>(null);
 
   // Auto-select best view mode based on screen size
@@ -80,8 +90,22 @@ const TrainerCalendar = () => {
   useEffect(() => {
     if (token) {
       fetchSessions();
+      fetchServiceTemplates();
     }
   }, [currentDate, token]);
+
+  const fetchServiceTemplates = async () => {
+    if (!token) return;
+    
+    try {
+      const response = await serviceTemplateApi.list(token);
+      if (response.success) {
+        setServiceTemplates(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching service templates:', error);
+    }
+  };
 
   const fetchSessions = async () => {
     if (!token) return;
@@ -106,7 +130,6 @@ const TrainerCalendar = () => {
       );
 
       setSessions(filteredSessions);
-      console.log('Fetched sessions:', filteredSessions.length, 'total sessions');
     } catch (error) {
       console.error('Error fetching sessions:', error);
     } finally {
@@ -223,6 +246,92 @@ const TrainerCalendar = () => {
         month: 'short'
       });
     }
+  };
+
+  const getSessionColor = (session: Session) => {
+    if (session.status === 'cancelled') return 'bg-red-500';
+    if (session.status === 'completed') return 'bg-gray-400';
+    
+    // Debug logging
+    console.log('Session:', session.title, 'Templates available:', serviceTemplates.length);
+    if (serviceTemplates.length > 0) {
+      console.log('Templates:', serviceTemplates.map(t => t.name));
+    }
+    
+    // Try to find matching service template by title
+    const template = serviceTemplates.find(t => t.name === session.title);
+    if (template) {
+      console.log('Found template for', session.title, '- color:', template.color);
+      
+      // Convert simple color name to Tailwind class
+      const colorMap: { [key: string]: string } = {
+        'red': 'bg-red-500',
+        'orange': 'bg-orange-500',
+        'amber': 'bg-amber-500',
+        'yellow': 'bg-yellow-500',
+        'lime': 'bg-lime-500',
+        'green': 'bg-green-500',
+        'emerald': 'bg-emerald-500',
+        'teal': 'bg-teal-500',
+        'cyan': 'bg-cyan-500',
+        'sky': 'bg-sky-500',
+        'blue': 'bg-blue-500',
+        'indigo': 'bg-indigo-500',
+        'violet': 'bg-violet-500',
+        'purple': 'bg-purple-500',
+        'fuchsia': 'bg-fuchsia-500',
+        'pink': 'bg-pink-500',
+        'rose': 'bg-rose-500',
+        'gray': 'bg-gray-500',
+        'slate': 'bg-slate-500',
+        'zinc': 'bg-zinc-500',
+        'neutral': 'bg-neutral-500',
+        'stone': 'bg-stone-500'
+      };
+      
+      const tailwindColor = colorMap[template.color] || 'bg-gray-500';
+      console.log('Converted color:', template.color, '->', tailwindColor);
+      return tailwindColor;
+    } else {
+      console.log('No template found for', session.title);
+    }
+    
+    // Fallback to type-based colors
+    switch (session.session_type) {
+      case 'individual':
+        return 'bg-blue-500';
+      case 'group':
+        return 'bg-green-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  const getSessionColorVariants = (session: Session) => {
+    const baseColor = getSessionColor(session);
+    
+    // Extract color name (e.g., 'blue' from 'bg-blue-500')
+    const colorMatch = baseColor.match(/bg-(\w+)-\d+/);
+    const colorName = colorMatch ? colorMatch[1] : 'gray';
+    
+    return {
+      solid: baseColor,
+      light: `bg-${colorName}-50`,
+      border: `border-${colorName}-200`,
+      hover: `hover:bg-${colorName}-100`,
+      text: `text-${colorName}-700`
+    };
+  };
+
+  const getSessionLabel = (session: Session) => {
+    // Try to find matching service template by title
+    const template = serviceTemplates.find(t => t.name === session.title);
+    if (template) {
+      return template.name;
+    }
+    
+    // Fallback to session title
+    return session.title;
   };
 
   const getSessionTypeColor = (type: string, status?: string) => {
@@ -404,9 +513,9 @@ const TrainerCalendar = () => {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-2">
-                  <div className={`w-3 h-3 rounded-full ${getSessionTypeColor(session.session_type, session.status)}`}></div>
+                  <div className={`w-3 h-3 rounded-full ${getSessionColor(session)}`}></div>
                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    {getSessionTypeLabel(session.session_type)}
+                    {getSessionLabel(session)}
                   </span>
                   <span className="text-xs text-gray-400">•</span>
                   <span className="text-xs text-gray-500">
@@ -500,7 +609,7 @@ const TrainerCalendar = () => {
                         <div
                           key={session.id}
                           onClick={() => handleSessionClick(session)}
-                          className={`p-3 rounded-lg cursor-pointer transition-all active:scale-[0.98] ${getSessionTypeColor(session.session_type, session.status)} text-white`}
+                          className={`p-3 rounded-lg cursor-pointer transition-all active:scale-[0.98] ${getSessionColor(session)} text-white`}
                         >
                           <div className="font-medium text-sm">{session.title}</div>
                           <div className="text-xs opacity-90">
@@ -571,12 +680,7 @@ const TrainerCalendar = () => {
                         onClick={() => handleSessionClick(session)}
                         className={`
                           w-full text-left p-2 rounded-md transition-all hover:scale-[1.02] cursor-pointer border
-                          ${session.session_type === 'individual' 
-                            ? 'bg-blue-50 border-blue-200 hover:bg-blue-100' 
-                            : session.session_type === 'group'
-                            ? 'bg-green-50 border-green-200 hover:bg-green-100'
-                            : 'bg-purple-50 border-purple-200 hover:bg-purple-100'
-                          }
+                          ${getSessionColorVariants(session).light} ${getSessionColorVariants(session).border} ${getSessionColorVariants(session).hover}
                         `}
                       >
                         <div className="flex items-start justify-between">
@@ -662,8 +766,7 @@ const TrainerCalendar = () => {
                 {daySessions.length > 0 && (
                   <div className="flex items-center justify-center space-x-0.5 absolute bottom-1 sm:bottom-2">
                     {daySessions.slice(0, 4).map((session, idx) => {
-                      const color = session.session_type === 'individual' ? 'bg-blue-500' : 
-                                   session.session_type === 'group' ? 'bg-green-500' : 'bg-purple-500';
+                      const color = getSessionColor(session);
                       
                       return daySessions.length === 1 ? (
                         // Single session - line
@@ -776,10 +879,7 @@ const TrainerCalendar = () => {
                           {session.title}
                         </div>
                       </div>
-                      <div className={`w-2 h-2 rounded-full ${
-                        session.session_type === 'individual' ? 'bg-blue-500' :
-                        session.session_type === 'group' ? 'bg-green-500' : 'bg-purple-500'
-                      }`} />
+                      <div className={`w-2 h-2 rounded-full ${getSessionColor(session)}`} />
                     </div>
                   </button>
                 ))}

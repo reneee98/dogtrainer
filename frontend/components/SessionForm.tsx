@@ -11,7 +11,6 @@ const sessionSchema = z.object({
   title: z.string().min(3, 'Názov musí mať aspoň 3 znaky'),
   description: z.string().optional(),
   location: z.string().min(2, 'Zadajte miesto konania'),
-  session_type: z.enum(['individual', 'group', 'daycare'], { required_error: 'Vyberte typ relácie' }),
   start_time: z.string().min(1, 'Vyberte dátum a čas začiatku'),
   duration: z.number().min(1, 'Vyberte trvanie').max(3, 'Maximálne trvanie je 3 hodiny'),
   capacity: z.number().min(1, 'Kapacita musí byť aspoň 1').max(20, 'Kapacita je príliš vysoká'),
@@ -84,7 +83,6 @@ export default function SessionForm({ session, date, onClose, onSuccess }: Sessi
       title: session?.title || '',
       description: session?.description || '',
       location: session?.location || '',
-      session_type: session?.session_type || 'individual',
       start_time: getDefaultStartTime(),
       duration: session?.start_time && session?.end_time 
         ? calculateDuration(session.start_time, session.end_time)
@@ -114,7 +112,7 @@ export default function SessionForm({ session, date, onClose, onSuccess }: Sessi
         title: data.title,
         description: data.description,
         location: data.location,
-        session_type: data.session_type,
+        session_type: 'group', // Always set to group training
         start_time: new Date(data.start_time).toISOString(),
         end_time: endTime,
         capacity: data.capacity,
@@ -171,8 +169,6 @@ export default function SessionForm({ session, date, onClose, onSuccess }: Sessi
     setSelectedTemplateId(templateId);
     if (template) {
       setValue('title', template.name);
-      // Prednastavíme typ na skupinový ak sa jedná o template (väčšinou budú skupinové)
-      setValue('session_type', 'group');
       setValue('duration', template.duration);
       setValue('price', template.price);
       setValue('description', template.description || '');
@@ -219,17 +215,7 @@ export default function SessionForm({ session, date, onClose, onSuccess }: Sessi
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Typ relácie</label>
-            <select {...register('session_type')} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-              <option value="individual">Individuálny tréning</option>
-              <option value="group">Skupinový tréning</option>
-              <option value="daycare">Jasle</option>
-            </select>
-            {errors.session_type && (
-              <p className="mt-1 text-sm text-red-600">{errors.session_type.message}</p>
-            )}
-          </div>
+
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Miesto konania</label>
