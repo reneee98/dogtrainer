@@ -1,233 +1,373 @@
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
-import { daycareApi } from '../lib/api';
-import { toast } from 'react-toastify';
-
-const scheduleSchema = z.object({
-  name: z.string().min(3, 'Názov musí mať aspoň 3 znaky'),
-  start_time: z.string().min(1, 'Vyberte začiatok'),
-  end_time: z.string().min(1, 'Vyberte koniec'),
-  days_of_week: z.array(z.number()).min(1, 'Vyberte aspoň jeden deň'),
-  capacity: z.number().min(1, 'Kapacita musí byť aspoň 1').max(50, 'Kapacita je príliš vysoká'),
-  price: z.number().min(0, 'Cena musí byť kladné číslo'),
-});
-
-type ScheduleFormData = z.infer<typeof scheduleSchema>;
+import { 
+  CalendarDaysIcon,
+  ClockIcon,
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  PowerIcon,
+  PlayIcon
+} from '@heroicons/react/24/outline';
 
 interface DaycareSchedule {
   id: number;
   name: string;
+  description: string;
   start_time: string;
   end_time: string;
-  days_of_week: number[];
   capacity: number;
-  price: number;
+  price_per_day: number;
+  days_of_week: number[];
+  valid_from: string;
+  valid_until: string;
+  waitlist_enabled: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 interface DaycareScheduleFormProps {
-  schedule?: DaycareSchedule | null;
+  schedule?: DaycareSchedule;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function DaycareScheduleForm({ schedule, onClose, onSuccess }: DaycareScheduleFormProps) {
-  const { token } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [selectedDays, setSelectedDays] = useState<number[]>(schedule?.days_of_week || []);
+const DAYS_OF_WEEK = [
+  { id: 1, name: 'Pondelok', short: 'Po' },
+  { id: 2, name: 'Utorok', short: 'Ut' },
+  { id: 3, name: 'Streda', short: 'St' },
+  { id: 4, name: 'Štvrtok', short: 'Št' },
+  { id: 5, name: 'Piatok', short: 'Pi' },
+  { id: 6, name: 'Sobota', short: 'So' },
+  { id: 7, name: 'Nedeľa', short: 'Ne' }
+];
 
-  const { register, handleSubmit, formState: { errors } } = useForm<ScheduleFormData>({
-    resolver: zodResolver(scheduleSchema),
-    defaultValues: {
-      name: schedule?.name || '',
-      start_time: schedule?.start_time || '',
-      end_time: schedule?.end_time || '',
-      days_of_week: schedule?.days_of_week || [],
-      capacity: schedule?.capacity || 10,
-      price: schedule?.price || 0,
-    },
+export function DaycareScheduleForm({ schedule, onClose, onSuccess }: DaycareScheduleFormProps) {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+  const isEditing = !!schedule;
+
+  const [formData, setFormData] = useState({
+    name: schedule?.name || '',
+    description: schedule?.description || '',
+    start_time: schedule?.start_time || '09:00',
+    end_time: schedule?.end_time || '17:00',
+    capacity: schedule?.capacity || 10,
+    price_per_day: schedule?.price_per_day || 50,
+    days_of_week: schedule?.days_of_week || [],
+    valid_from: schedule?.valid_from || new Date().toISOString().split('T')[0],
+    valid_until: schedule?.valid_until || '',
+    waitlist_enabled: schedule?.waitlist_enabled ?? true
   });
 
-  const daysOfWeek = [
-    { value: 1, label: 'Pondelok' },
-    { value: 2, label: 'Utorok' },
-    { value: 3, label: 'Streda' },
-    { value: 4, label: 'Štvrtok' },
-    { value: 5, label: 'Piatok' },
-    { value: 6, label: 'Sobota' },
-    { value: 0, label: 'Nedeľa' },
-  ];
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const toggleDay = (dayValue: number) => {
-    setSelectedDays(prev => 
-      prev.includes(dayValue)
-        ? prev.filter(d => d !== dayValue)
-        : [...prev, dayValue]
-    );
-  };
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/daycare-schedules`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
 
-  const onSubmit = async (data: ScheduleFormData) => {
-    if (selectedDays.length === 0) {
-      toast.error('Vyberte aspoň jeden deň');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Chyba pri vytváraní rozvrhu');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['daycare-schedules'] });
+      onSuccess();
+      onClose();
+    },
+    onError: (error: any) => {
+      console.error('Create error:', error);
+      setErrors({ general: error.message });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/daycare-schedules/${schedule!.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Chyba pri aktualizácii rozvrhu');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['daycare-schedules'] });
+      onSuccess();
+      onClose();
+    },
+    onError: (error: any) => {
+      console.error('Update error:', error);
+      setErrors({ general: error.message });
+    }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+
+    // Validation
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.name.trim()) {
+      newErrors.name = 'Názov je povinný';
+    }
+    
+    if (!formData.description.trim()) {
+      newErrors.description = 'Popis je povinný';
+    }
+    
+    if (formData.capacity < 1) {
+      newErrors.capacity = 'Kapacita musí byť aspoň 1';
+    }
+    
+    if (formData.price_per_day < 0) {
+      newErrors.price_per_day = 'Cena nemôže byť záporná';
+    }
+    
+    if (formData.days_of_week.length === 0) {
+      newErrors.days_of_week = 'Vyberte aspoň jeden deň v týždni';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
-    setLoading(true);
-    try {
-      const formData = { ...data, days_of_week: selectedDays };
-      
-      if (schedule) {
-        await daycareApi.update(token!, schedule.id, formData);
-        toast.success('Rozvrh bol aktualizovaný');
-      } else {
-        await daycareApi.create(token!, formData);
-        toast.success('Rozvrh bol vytvorený');
-      }
-      onSuccess();
-    } catch (error) {
-      toast.error('Chyba pri ukladaní rozvrhu');
-    } finally {
-      setLoading(false);
+    if (isEditing) {
+      updateMutation.mutate(formData);
+    } else {
+      createMutation.mutate(formData);
     }
   };
 
+  const handleDayToggle = (dayId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      days_of_week: prev.days_of_week.includes(dayId)
+        ? prev.days_of_week.filter(id => id !== dayId)
+        : [...prev.days_of_week, dayId]
+    }));
+  };
+
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h3 className="text-lg font-medium text-gray-900">
-            {schedule ? 'Upraviť rozvrh' : 'Nový rozvrh jaslí'}
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <XMarkIcon className="h-6 w-6" />
-          </button>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {isEditing ? 'Upraviť rozvrh' : 'Nový rozvrh'}
+          </h2>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
-          <div>
-            <label className="form-label">Názov rozvrhu</label>
-            <input
-              {...register('name')}
-              type="text"
-              className="form-input"
-              placeholder="Denné jasle"
-            />
-            {errors.name && (
-              <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
-            )}
-          </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {errors.general && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-700">{errors.general}</p>
+            </div>
+          )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Basic Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="form-label">Začiatok</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Názov rozvrhu *
+              </label>
               <input
-                {...register('start_time')}
-                type="time"
-                className="form-input"
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.name ? 'border-red-300' : 'border-gray-300'
+                }`}
+                placeholder="Ranný rozvrh"
               />
-              {errors.start_time && (
-                <p className="mt-1 text-sm text-red-600">{errors.start_time.message}</p>
-              )}
+              {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
             </div>
 
             <div>
-              <label className="form-label">Koniec</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Kapacita *
+              </label>
               <input
-                {...register('end_time')}
-                type="time"
-                className="form-input"
-              />
-              {errors.end_time && (
-                <p className="mt-1 text-sm text-red-600">{errors.end_time.message}</p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label className="form-label">Dni v týždni</label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-              {daysOfWeek.map((day) => (
-                <label
-                  key={day.value}
-                  className={`
-                    flex items-center justify-center p-3 border rounded-lg cursor-pointer transition-colors
-                    ${selectedDays.includes(day.value)
-                      ? 'bg-primary-100 border-primary-300 text-primary-700'
-                      : 'bg-white border-gray-300 hover:bg-gray-50'
-                    }
-                  `}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedDays.includes(day.value)}
-                    onChange={() => toggleDay(day.value)}
-                    className="sr-only"
-                  />
-                  <span className="text-sm font-medium">{day.label}</span>
-                </label>
-              ))}
-            </div>
-            {selectedDays.length === 0 && (
-              <p className="mt-1 text-sm text-red-600">Vyberte aspoň jeden deň</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="form-label">Kapacita (počet psov)</label>
-              <input
-                {...register('capacity', { valueAsNumber: true })}
                 type="number"
                 min="1"
-                max="50"
-                className="form-input"
-                placeholder="10"
+                value={formData.capacity}
+                onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) || 0 })}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.capacity ? 'border-red-300' : 'border-gray-300'
+                }`}
               />
-              {errors.capacity && (
-                <p className="mt-1 text-sm text-red-600">{errors.capacity.message}</p>
-              )}
+              {errors.capacity && <p className="text-red-600 text-sm mt-1">{errors.capacity}</p>}
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Popis *
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={3}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                errors.description ? 'border-red-300' : 'border-gray-300'
+              }`}
+              placeholder="Popis denného pobytu..."
+            />
+            {errors.description && <p className="text-red-600 text-sm mt-1">{errors.description}</p>}
+          </div>
+
+          {/* Time */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Začiatok
+              </label>
+              <input
+                type="time"
+                value={formData.start_time}
+                onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
 
             <div>
-              <label className="form-label">Cena za deň (€)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Koniec
+              </label>
               <input
-                {...register('price', { valueAsNumber: true })}
+                type="time"
+                value={formData.end_time}
+                onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {/* Price and Dates */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Cena za deň (€)
+              </label>
+              <input
                 type="number"
                 min="0"
                 step="0.01"
-                className="form-input"
-                placeholder="15.00"
+                value={formData.price_per_day}
+                onChange={(e) => setFormData({ ...formData, price_per_day: parseFloat(e.target.value) || 0 })}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.price_per_day ? 'border-red-300' : 'border-gray-300'
+                }`}
               />
-              {errors.price && (
-                <p className="mt-1 text-sm text-red-600">{errors.price.message}</p>
-              )}
+              {errors.price_per_day && <p className="text-red-600 text-sm mt-1">{errors.price_per_day}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Platné od
+              </label>
+              <input
+                type="date"
+                value={formData.valid_from}
+                onChange={(e) => setFormData({ ...formData, valid_from: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Platné do
+              </label>
+              <input
+                type="date"
+                value={formData.valid_until}
+                onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4 border-t">
+          {/* Days of Week */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Dni v týždni *
+            </label>
+            <div className="grid grid-cols-7 gap-2">
+              {DAYS_OF_WEEK.map((day) => (
+                <button
+                  key={day.id}
+                  type="button"
+                  onClick={() => handleDayToggle(day.id)}
+                  className={`p-3 text-sm font-medium rounded-lg border transition-colors ${
+                    formData.days_of_week.includes(day.id)
+                      ? 'bg-blue-500 text-white border-blue-500'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="text-xs">{day.short}</div>
+                  <div className="text-xs mt-1">{day.name}</div>
+                </button>
+              ))}
+            </div>
+            {errors.days_of_week && <p className="text-red-600 text-sm mt-1">{errors.days_of_week}</p>}
+          </div>
+
+          {/* Options */}
+          <div>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.waitlist_enabled}
+                onChange={(e) => setFormData({ ...formData, waitlist_enabled: e.target.checked })}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="ml-2 text-sm text-gray-700">Povoliť čakaciu listinu</span>
+            </label>
+          </div>
+
+          {/* Submit Buttons */}
+          <div className="flex justify-end space-x-3 pt-6">
             <button
               type="button"
               onClick={onClose}
-              className="btn btn-outline"
+              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Zrušiť
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className="btn btn-primary disabled:opacity-50"
+              disabled={createMutation.isPending || updateMutation.isPending}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? 'Ukladanie...' : (schedule ? 'Aktualizovať' : 'Vytvoriť rozvrh')}
+              {(createMutation.isPending || updateMutation.isPending) ? 'Ukladám...' : (isEditing ? 'Uložiť' : 'Vytvoriť')}
             </button>
           </div>
         </form>
       </div>
     </div>
   );
-} 
+}
+
+export default DaycareScheduleForm; 

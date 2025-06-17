@@ -1,6 +1,8 @@
 import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import TrainerDashboard from '../components/TrainerDashboard';
+import ScheduleManagement from '../components/ScheduleManagement';
 import { 
   FaDog, 
   FaCalendarAlt, 
@@ -193,39 +195,41 @@ export default function Dashboard() {
         {/* Main Content */}
         <main className="flex-1 p-8">
           {activeSection === 'overview' && (
-            <div className="space-y-8">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Vitajte späť, {user.name}!
-                </h2>
-                <p className="text-gray-600">
-                  Tu je prehľad vašej aktivity
-                </p>
-              </div>
-
-              {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {stats.map((stat, index) => (
-                  <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center">
-                      <div className={`${stat.color} text-white p-3 rounded-lg mr-4`}>
-                        {stat.icon}
-                      </div>
-                      <div>
-                        <h3 className="text-2xl font-bold text-gray-900">{stat.value}</h3>
-                        <p className="text-gray-600 text-sm">{stat.title}</p>
-                      </div>
-                    </div>
+            <>
+              {user.role === 'trainer' ? (
+                <TrainerDashboard />
+              ) : (
+                <div className="space-y-8">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                      Vitajte späť, {user.name}!
+                    </h2>
+                    <p className="text-gray-600">
+                      Tu je prehľad vašej aktivity
+                    </p>
                   </div>
-                ))}
-              </div>
 
-              {/* Quick Actions */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Rýchle akcie</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {user.role === 'owner' ? (
-                    <>
+                  {/* Stats Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {stats.map((stat, index) => (
+                      <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div className="flex items-center">
+                          <div className={`${stat.color} text-white p-3 rounded-lg mr-4`}>
+                            {stat.icon}
+                          </div>
+                          <div>
+                            <h3 className="text-2xl font-bold text-gray-900">{stat.value}</h3>
+                            <p className="text-gray-600 text-sm">{stat.title}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Rýchle akcie</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       <button className="flex items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
                         <FaPlus className="text-blue-600 mr-3" />
                         <span className="text-blue-900 font-medium">Pridať psa</span>
@@ -238,26 +242,11 @@ export default function Dashboard() {
                         <FaUsers className="text-purple-600 mr-3" />
                         <span className="text-purple-900 font-medium">Skupinové lekcie</span>
                       </button>
-                    </>
-                  ) : (
-                    <>
-                      <button className="flex items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
-                        <FaPlus className="text-blue-600 mr-3" />
-                        <span className="text-blue-900 font-medium">Vytvoriť lekciu</span>
-                      </button>
-                      <button className="flex items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
-                        <FaCalendarAlt className="text-green-600 mr-3" />
-                        <span className="text-green-900 font-medium">Upraviť rozvrh</span>
-                      </button>
-                      <button className="flex items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
-                        <FaUsers className="text-purple-600 mr-3" />
-                        <span className="text-purple-900 font-medium">Spravovať klientov</span>
-                      </button>
-                    </>
-                  )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              )}
+            </>
           )}
 
           {/* Dogs Management */}
@@ -304,31 +293,37 @@ export default function Dashboard() {
 
           {/* Sessions */}
           {(activeSection === 'sessions' || activeSection === 'schedule') && (
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                {user.role === 'owner' ? 'Skupinové lekcie' : 'Môj rozvrh'}
-              </h2>
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="text-center py-8">
-                  <FaUsers className="mx-auto text-4xl text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {user.role === 'owner' ? 'Skupinové aktivity' : 'Rozvrh tréningov'}
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    {user.role === 'owner' 
-                      ? 'Prihláste sa na skupinové lekcie a aktivity.'
-                      : 'Spravujte svoj rozvrh a lekcie.'}
-                  </p>
-                  <button
-                    onClick={() => alert('Lekcie budú čoskoro dostupné!')}
-                    className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg flex items-center mx-auto"
-                  >
-                    <FaUsers className="mr-2" />
-                    {user.role === 'owner' ? 'Prihlásiť sa' : 'Vytvoriť lekciu'}
-                  </button>
+            <>
+              {user.role === 'trainer' && activeSection === 'schedule' ? (
+                <ScheduleManagement />
+              ) : (
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                    {user.role === 'owner' ? 'Skupinové lekcie' : 'Lekcie'}
+                  </h2>
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="text-center py-8">
+                      <FaUsers className="mx-auto text-4xl text-gray-400 mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        {user.role === 'owner' ? 'Skupinové aktivity' : 'Správa relácií'}
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        {user.role === 'owner' 
+                          ? 'Prihláste sa na skupinové lekcie a aktivity.'
+                          : 'Spravujte svoje individuálne lekcie.'}
+                      </p>
+                      <button
+                        onClick={() => alert('Lekcie budú čoskoro dostupné!')}
+                        className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg flex items-center mx-auto"
+                      >
+                        <FaUsers className="mr-2" />
+                        {user.role === 'owner' ? 'Prihlásiť sa' : 'Vytvoriť lekciu'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              )}
+            </>
           )}
 
           {/* Daycare */}
