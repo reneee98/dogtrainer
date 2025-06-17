@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import TrainerDashboard from '../components/TrainerDashboard';
 import ScheduleManagement from '../components/ScheduleManagement';
 import OwnerCalendar from '../components/OwnerCalendar';
+import SessionsListTrainer from '../components/SessionsListTrainer';
 import { 
   FaDog, 
   FaCalendarAlt, 
@@ -284,6 +285,22 @@ export default function Dashboard() {
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Skupinové lekcie</h2>
               <OwnerCalendar />
+            </div>
+          )}
+
+          {/* Trainer Schedule */}
+          {activeSection === 'schedule' && user.role === 'trainer' && (
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Môj rozvrh</h2>
+              <SessionsListTrainer />
+            </div>
+          )}
+
+          {/* Trainer Sessions */}
+          {activeSection === 'sessions' && user.role === 'trainer' && (
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Lekcie</h2>
+              <SessionsListTrainer />
             </div>
           )}
 
