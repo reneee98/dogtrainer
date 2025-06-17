@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiRequest } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Dog {
   id: string;
@@ -44,6 +45,7 @@ interface CalendarEvent {
 }
 
 const OwnerCalendar = () => {
+  const { token } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,25 +58,43 @@ const OwnerCalendar = () => {
   const [isBooking, setIsBooking] = useState(false);
 
   useEffect(() => {
-    fetchEvents();
-    fetchUserDogs();
-  }, [currentDate]);
+    if (token) {
+      fetchEvents();
+      fetchUserDogs();
+    }
+  }, [currentDate, token]);
 
   const fetchEvents = async () => {
+    if (!token) return;
+    
     try {
       setLoading(true);
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth() + 1;
-      
-      const [sessionsResponse] = await Promise.all([
-        apiRequest(`/sessions?year=${year}&month=${month}`)
-      ]);
+      // Fetch all sessions, not filtered by month for now
+      const sessionsResponse = await apiRequest('/sessions', { token });
+
+      console.log('Sessions response:', sessionsResponse);
 
       const events: CalendarEvent[] = [];
 
-      // Add sessions
-      if (sessionsResponse.success && Array.isArray(sessionsResponse.data?.sessions)) {
-        sessionsResponse.data.sessions.forEach((session: Session) => {
+      // Handle different response formats
+      let sessions = [];
+      if (sessionsResponse.success) {
+        if (Array.isArray(sessionsResponse.data)) {
+          sessions = sessionsResponse.data;
+        } else if (sessionsResponse.data?.sessions && Array.isArray(sessionsResponse.data.sessions)) {
+          sessions = sessionsResponse.data.sessions;
+        } else if (sessionsResponse.data?.data && Array.isArray(sessionsResponse.data.data)) {
+          sessions = sessionsResponse.data.data;
+        }
+      } else if (Array.isArray(sessionsResponse)) {
+        sessions = sessionsResponse;
+      }
+
+      console.log('Processed sessions:', sessions);
+
+      // Add sessions to events
+      sessions.forEach((session: Session) => {
+        if (session.status === 'scheduled') { // Only show scheduled sessions
           events.push({
             id: `session-${session.id}`,
             title: session.title,
@@ -82,11 +102,12 @@ const OwnerCalendar = () => {
             end: new Date(session.end_time),
             type: 'session',
             session,
-            color: 'bg-green-100 border-green-300 text-green-800'
+            color: getSessionColor(session.session_type)
           });
-        });
-      }
+        }
+      });
 
+      console.log('Calendar events:', events);
       setEvents(events);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -95,9 +116,24 @@ const OwnerCalendar = () => {
     }
   };
 
+  const getSessionColor = (sessionType: string): string => {
+    switch (sessionType) {
+      case 'individual':
+        return 'bg-blue-100 border-blue-300 text-blue-800';
+      case 'group':
+        return 'bg-green-100 border-green-300 text-green-800';
+      case 'daycare':
+        return 'bg-purple-100 border-purple-300 text-purple-800';
+      default:
+        return 'bg-gray-100 border-gray-300 text-gray-800';
+    }
+  };
+
   const fetchUserDogs = async () => {
+    if (!token) return;
+    
     try {
-      const response = await apiRequest('/dogs');
+      const response = await apiRequest('/dogs', { token });
       if (response.success && Array.isArray(response.data?.dogs)) {
         setDogs(response.data.dogs);
         if (response.data.dogs.length > 0) {
@@ -110,12 +146,14 @@ const OwnerCalendar = () => {
   };
 
   const handleEventClick = async (event: CalendarEvent) => {
+    if (!token) return;
+    
     if (event.type === 'session' && event.session) {
       try {
         // Fetch full session details
-        const response = await apiRequest(`/sessions/${event.session.id}`);
+        const response = await apiRequest(`/sessions/${event.session.id}`, { token });
         if (response.success) {
-          setSelectedSession(response.data.session);
+          setSelectedSession(response.data.session || response.data);
           setShowSessionModal(true);
         }
       } catch (error) {
@@ -125,12 +163,13 @@ const OwnerCalendar = () => {
   };
 
   const handleBookSession = async () => {
-    if (!selectedSession || !selectedDogId) return;
+    if (!selectedSession || !selectedDogId || !token) return;
     
     setIsBooking(true);
     try {
       const response = await apiRequest(`/sessions/${selectedSession.id}/signup`, {
         method: 'POST',
+        token,
         body: JSON.stringify({
           dog_id: selectedDogId,
           notes: bookingNotes,
@@ -156,12 +195,13 @@ const OwnerCalendar = () => {
   };
 
   const handleJoinWaitlist = async () => {
-    if (!selectedSession || !selectedDogId) return;
+    if (!selectedSession || !selectedDogId || !token) return;
     
     setIsBooking(true);
     try {
       const response = await apiRequest(`/sessions/${selectedSession.id}/waitlist`, {
         method: 'POST',
+        token,
         body: JSON.stringify({
           dog_id: selectedDogId,
           notes: bookingNotes

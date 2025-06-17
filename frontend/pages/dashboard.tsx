@@ -123,7 +123,7 @@ export default function Dashboard() {
     ? [
         { id: 'overview', label: 'Prehľad', icon: <FaHome /> },
         { id: 'dogs', label: 'Moji psi', icon: <FaDog /> },
-        { id: 'bookings', label: 'Rezervácie', icon: <FaCalendarAlt /> },
+        { id: 'calendar', label: 'Kalendár', icon: <FaCalendarAlt /> },
         { id: 'sessions', label: 'Skupinové tréningy', icon: <FaUsers /> },
         { id: 'daycare', label: 'Denné pobyty', icon: <FaPaw /> },
         { id: 'reviews', label: 'Hodnotenia', icon: <FaStar /> },
@@ -283,10 +283,10 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Bookings */}
-          {activeSection === 'bookings' && user.role === 'owner' && (
+          {/* Calendar - Owner's Calendar View */}
+          {activeSection === 'calendar' && user.role === 'owner' && (
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Rezervácie</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Kalendár tréningov a služieb</h2>
               <OwnerCalendar />
             </div>
           )}
@@ -338,7 +338,7 @@ export default function Dashboard() {
           )}
 
           {/* Other sections */}
-          {!['overview', 'dogs', 'bookings', 'sessions', 'schedule', 'daycare'].includes(activeSection) && (
+          {!['overview', 'dogs', 'calendar', 'sessions', 'schedule', 'daycare'].includes(activeSection) && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
               <FaCogs className="mx-auto text-4xl text-gray-400 mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
