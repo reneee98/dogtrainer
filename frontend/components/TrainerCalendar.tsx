@@ -1208,18 +1208,13 @@ const TrainerCalendar = () => {
               <div className="p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
-                      {selectedSession.title}
-                    </h3>
+                    <div className="flex items-center space-x-3 mb-2">
+                      <div className={`w-3 h-3 rounded-full ${getSessionColor(selectedSession)}`}></div>
+                      <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">
+                        {getSessionLabel(selectedSession)}
+                      </h3>
+                    </div>
                     <div className="flex items-center space-x-2">
-                      <span className={`
-                        inline-block px-3 py-1 rounded-full text-sm font-medium
-                        ${selectedSession.session_type === 'individual' 
-                          ? 'bg-blue-100 text-blue-800' 
-                          : 'bg-green-100 text-green-800'}
-                      `}>
-                        {getSessionTypeLabel(selectedSession.session_type)}
-                      </span>
                       <span className={`
                         inline-block px-3 py-1 rounded-full text-sm font-medium
                         ${selectedSession.status === 'scheduled' ? 'bg-green-100 text-green-800' :
@@ -1242,6 +1237,12 @@ const TrainerCalendar = () => {
                   <div>
                     <h4 className="text-lg font-medium text-gray-900 mb-4">Detaily tréningy</h4>
                     <div className="space-y-3">
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Služba</span>
+                        <span className="font-medium text-gray-900">
+                          {getSessionLabel(selectedSession)}
+                        </span>
+                      </div>
                       <div className="flex items-center justify-between py-2 border-b border-gray-100">
                         <span className="text-gray-600">Dátum</span>
                         <span className="font-medium text-gray-900">
