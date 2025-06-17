@@ -1,0 +1,474 @@
+name: 🚀 CI/CD Pipeline - Dog Booking System
+
+on:
+  push:
+    branches: [main, develop, staging]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run backup job daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  # Frontend Jobs
+  frontend-lint:
+    name: 🔍 Frontend Lint & Type Check
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 📦 Install dependencies
+        run: cd frontend && npm ci
+
+      - name: 🔍 Run ESLint
+        run: cd frontend && npm run lint
+
+      - name: 🔍 Check TypeScript
+        run: cd frontend && npm run type-check
+
+      - name: 📊 Upload lint results
+        uses: github/super-linter@v5
+        if: failure()
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_TYPESCRIPT_ES: true
+          VALIDATE_JAVASCRIPT_ES: true
+
+  frontend-test:
+    name: 🧪 Frontend Tests
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 📦 Install dependencies
+        run: cd frontend && npm ci
+
+      - name: 🧪 Run tests with coverage
+        run: cd frontend && npm run test:coverage
+
+      - name: 📊 Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          directory: ./frontend/coverage
+          flags: frontend
+          name: frontend-coverage
+
+  # Backend Jobs
+  backend-lint:
+    name: 🔍 Backend Lint & Security
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐘 Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, gd, redis
+          coverage: xdebug
+
+      - name: 📦 Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: 🗂️ Cache composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: 📦 Install dependencies
+        run: cd backend && composer install --prefer-dist --no-progress
+
+      - name: 🔍 Run PHP CS Fixer
+        run: cd backend && vendor/bin/php-cs-fixer fix --dry-run --diff
+
+      - name: 🔒 Run PHP Security Checker
+        run: cd backend && composer audit
+
+      - name: 🔍 Run PHPStan
+        run: cd backend && vendor/bin/phpstan analyse --memory-limit=2G
+
+  backend-test:
+    name: 🧪 Backend Tests
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    
+    services:
+      mysql:
+        image: mariadb:10.11
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: dog_booking_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐘 Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, gd, redis
+          coverage: xdebug
+
+      - name: 📦 Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: 🗂️ Cache composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: 📦 Install dependencies
+        run: cd backend && composer install --prefer-dist --no-progress
+
+      - name: 📋 Copy environment file
+        run: cd backend && cp .env.example .env
+
+      - name: 🔑 Generate app key
+        run: cd backend && php artisan key:generate
+
+      - name: 🗄️ Run database migrations
+        run: cd backend && php artisan migrate --force
+        env:
+          DB_HOST: localhost
+          DB_DATABASE: dog_booking_test
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      - name: 🧪 Run tests with coverage
+        run: cd backend && vendor/bin/phpunit --coverage-clover=coverage.xml
+        env:
+          DB_HOST: localhost
+          DB_DATABASE: dog_booking_test
+          DB_USERNAME: root
+          DB_PASSWORD: password
+          REDIS_HOST: localhost
+
+      - name: 📊 Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          directory: ./backend
+          flags: backend
+          name: backend-coverage
+
+  # Lighthouse CI for Performance Testing
+  lighthouse:
+    name: 🔍 Lighthouse Performance Audit
+    runs-on: ubuntu-latest
+    needs: [frontend-test]
+    if: github.event_name != 'schedule'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: 📦 Install dependencies
+        run: cd frontend && npm ci
+
+      - name: 🏗️ Build application
+        run: cd frontend && npm run build
+
+      - name: 🚀 Start application
+        run: cd frontend && npm start &
+        env:
+          NODE_ENV: production
+
+      - name: ⏳ Wait for application
+        run: npx wait-on http://localhost:3000 --timeout 60000
+
+      - name: 🔍 Run Lighthouse CI
+        run: |
+          npm install -g @lhci/cli@0.12.x
+          lhci autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+  # Security Scanning
+  security-scan:
+    name: 🔒 Security Scanning
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔒 Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: 📊 Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Build Docker Images
+  build-images:
+    name: 🐳 Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [frontend-lint, frontend-test, backend-lint, backend-test, security-scan]
+    if: github.event_name != 'schedule' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 Login to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: 🏗️ Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.prod
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_REGISTRY }}/dog-booking-backend:${{ env.IMAGE_TAG }}
+            ${{ secrets.DOCKER_REGISTRY }}/dog-booking-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      - name: 🏗️ Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_REGISTRY }}/dog-booking-frontend:${{ env.IMAGE_TAG }}
+            ${{ secrets.DOCKER_REGISTRY }}/dog-booking-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      - name: 📝 Create deployment summary
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend Image**: \`${{ secrets.DOCKER_REGISTRY }}/dog-booking-backend:${{ env.IMAGE_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend Image**: \`${{ secrets.DOCKER_REGISTRY }}/dog-booking-frontend:${{ env.IMAGE_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+
+  # Deploy to Staging
+  deploy-staging:
+    name: 🚀 Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.ref == 'refs/heads/staging'
+    environment: staging
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🚀 Deploy to staging server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USERNAME }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          port: ${{ secrets.STAGING_PORT }}
+          script: |
+            cd /opt/dog-booking-system
+            export IMAGE_TAG=${{ env.IMAGE_TAG }}
+            export DOCKER_REGISTRY=${{ secrets.DOCKER_REGISTRY }}
+            
+            # Pull latest images
+            docker-compose -f docker-compose.prod.yml pull
+            
+            # Deploy with zero downtime
+            docker-compose -f docker-compose.prod.yml up -d
+            
+            # Run migrations
+            docker-compose -f docker-compose.prod.yml exec -T backend php artisan migrate --force
+            
+            # Clear caches
+            docker-compose -f docker-compose.prod.yml exec -T backend php artisan cache:clear
+            docker-compose -f docker-compose.prod.yml exec -T backend php artisan config:cache
+            docker-compose -f docker-compose.prod.yml exec -T backend php artisan route:cache
+            docker-compose -f docker-compose.prod.yml exec -T backend php artisan view:cache
+            
+            # Clean up old images
+            docker system prune -f
+
+  # Deploy to Production
+  deploy-production:
+    name: 🌟 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🌟 Deploy to production server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USERNAME }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.PRODUCTION_PORT }}
+          script: |
+            cd /opt/dog-booking-system
+            export IMAGE_TAG=${{ env.IMAGE_TAG }}
+            export DOCKER_REGISTRY=${{ secrets.DOCKER_REGISTRY }}
+            
+            # Create backup before deployment
+            ./scripts/backup.sh
+            
+            # Pull latest images
+            docker-compose -f docker-compose.prod.yml pull
+            
+            # Deploy with zero downtime
+            docker-compose -f docker-compose.prod.yml up -d
+            
+            # Run migrations
+            docker-compose -f docker-compose.prod.yml exec -T backend php artisan migrate --force
+            
+            # Clear caches
+            docker-compose -f docker-compose.prod.yml exec -T backend php artisan cache:clear
+            docker-compose -f docker-compose.prod.yml exec -T backend php artisan config:cache
+            docker-compose -f docker-compose.prod.yml exec -T backend php artisan route:cache
+            docker-compose -f docker-compose.prod.yml exec -T backend php artisan view:cache
+            
+            # Restart queue workers
+            docker-compose -f docker-compose.prod.yml restart backend
+            
+            # Clean up old images
+            docker system prune -f
+
+      - name: 📱 Send deployment notification
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          text: |
+            🚀 Production deployment ${{ job.status }}!
+            
+            **Commit**: ${{ github.sha }}
+            **Author**: ${{ github.actor }}
+            **Branch**: ${{ github.ref_name }}
+            
+            🔗 [View Changes](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Database Backup Job
+  backup-database:
+    name: 💾 Database Backup
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    
+    steps:
+      - name: 💾 Trigger database backup
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USERNAME }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            cd /opt/dog-booking-system
+            ./scripts/backup.sh
+
+      - name: 📱 Send backup notification
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          text: |
+            💾 Database backup ${{ job.status }}!
+            
+            **Time**: $(date)
+            **Status**: ${{ job.status }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Health Check
+  health-check:
+    name: 🏥 Health Check
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 🏥 Check application health
+        run: |
+          # Wait for deployment to be ready
+          sleep 30
+          
+          # Check frontend
+          curl -f https://dogbooking.sk/health || exit 1
+          
+          # Check API
+          curl -f https://api.dogbooking.sk/health || exit 1
+          
+          echo "✅ Health check passed!"
+
+      - name: 📊 Update deployment status
+        run: |
+          echo "## 🏥 Health Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Frontend: Healthy" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ API: Healthy" >> $GITHUB_STEP_SUMMARY
+          echo "- 🕐 Checked at: $(date)" >> $GITHUB_STEP_SUMMARY 
