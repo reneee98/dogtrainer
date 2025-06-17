@@ -88,7 +88,7 @@ class SessionController extends Controller
             'end_time' => 'required|date|after:start_time',
             'capacity' => 'required|integer|min:1|max:50',
             'waitlist_enabled' => 'required|boolean',
-            'session_type' => 'required|string|in:training,daycare,workshop',
+            'session_type' => 'required|string|in:individual,group,daycare',
             'price' => 'nullable|numeric|min:0',
         ]);
 

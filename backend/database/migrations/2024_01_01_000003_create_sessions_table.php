@@ -22,7 +22,7 @@ return new class extends Migration
             $table->datetime('end_time');
             $table->integer('capacity');
             $table->boolean('waitlist_enabled')->default(false);
-            $table->enum('session_type', ['training', 'daycare', 'workshop'])->default('training');
+            $table->enum('session_type', ['individual', 'group', 'daycare'])->default('individual');
             $table->decimal('price', 8, 2)->nullable();
             $table->enum('status', ['scheduled', 'in_progress', 'completed', 'cancelled'])->default('scheduled');
             $table->text('cancellation_reason')->nullable();
