@@ -16,7 +16,11 @@ import {
   FaUserTie,
   FaPaw,
   FaBell,
-  FaPlus
+  FaPlus,
+  FaClock,
+  FaStar,
+  FaChartBar,
+  FaHome
 } from 'react-icons/fa';
 
 interface DashboardStat {
@@ -61,27 +65,27 @@ export default function Dashboard() {
 
   const ownerStats: DashboardStat[] = [
     {
-      title: 'Moji psi',
-      value: dashboardStats.dogs.toString(),
-      icon: <FaDog className="text-2xl" />,
+      title: 'Celkom psov',
+      value: '3',
+      icon: <FaDog />,
       color: 'bg-blue-500'
     },
     {
-      title: 'Aktívne rezervácie',
-      value: dashboardStats.bookings.toString(),
-      icon: <FaCalendarAlt className="text-2xl" />,
+      title: 'Skupinové tréningy',
+      value: '2',
+      icon: <FaUsers />,
       color: 'bg-green-500'
     },
     {
-      title: 'Skupinové lekcie',
-      value: dashboardStats.sessions.toString(),
-      icon: <FaUsers className="text-2xl" />,
+      title: 'Rezervácie',
+      value: '12',
+      icon: <FaCalendarAlt />,
       color: 'bg-purple-500'
     },
     {
-      title: 'Hodnotenie',
-      value: dashboardStats.reviews.toString(),
-      icon: <FaPaw className="text-2xl" />,
+      title: 'Dnešné tréningy',
+      value: '1',
+      icon: <FaClock />,
       color: 'bg-orange-500'
     }
   ];
@@ -94,7 +98,7 @@ export default function Dashboard() {
       color: 'bg-blue-500'
     },
     {
-      title: 'Dnešné lekcie',
+      title: 'Dnešné tréningy',
       value: '8',
       icon: <FaCalendarAlt className="text-2xl" />,
       color: 'bg-green-500'
@@ -117,20 +121,26 @@ export default function Dashboard() {
 
   const navigationItems = user.role === 'owner' 
     ? [
-        { id: 'overview', label: 'Prehľad', icon: <FaChartLine /> },
+        { id: 'overview', label: 'Prehľad', icon: <FaHome /> },
         { id: 'dogs', label: 'Moji psi', icon: <FaDog /> },
         { id: 'bookings', label: 'Rezervácie', icon: <FaCalendarAlt /> },
-        { id: 'sessions', label: 'Skupinové lekcie', icon: <FaUsers /> },
+        { id: 'sessions', label: 'Skupinové tréningy', icon: <FaUsers /> },
         { id: 'daycare', label: 'Denné pobyty', icon: <FaPaw /> },
+        { id: 'reviews', label: 'Hodnotenia', icon: <FaStar /> },
         { id: 'notifications', label: 'Notifikácie', icon: <FaBell /> },
+        { id: 'reports', label: 'Správy', icon: <FaChartBar /> },
+        { id: 'settings', label: 'Nastavenia', icon: <FaCogs /> }
       ]
     : [
-        { id: 'overview', label: 'Prehľad', icon: <FaChartLine /> },
+        { id: 'overview', label: 'Prehľad', icon: <FaHome /> },
         { id: 'schedule', label: 'Môj rozvrh', icon: <FaCalendarAlt /> },
         { id: 'clients', label: 'Klienti', icon: <FaUsers /> },
-        { id: 'sessions', label: 'Lekcie', icon: <FaUserTie /> },
+        { id: 'sessions', label: 'Tréningy', icon: <FaUserTie /> },
         { id: 'daycare', label: 'Denné pobyty', icon: <FaPaw /> },
-        { id: 'reviews', label: 'Hodnotenia', icon: <FaChartLine /> },
+        { id: 'reviews', label: 'Hodnotenia', icon: <FaStar /> },
+        { id: 'notifications', label: 'Notifikácie', icon: <FaBell /> },
+        { id: 'reports', label: 'Správy', icon: <FaChartBar /> },
+        { id: 'settings', label: 'Nastavenia', icon: <FaCogs /> }
       ];
 
   return (
@@ -239,11 +249,11 @@ export default function Dashboard() {
                       </button>
                       <button className="flex items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
                         <FaCalendarAlt className="text-green-600 mr-3" />
-                        <span className="text-green-900 font-medium">Rezervovať lekciu</span>
+                        <span className="text-green-900 font-medium">Rezervovať tréning</span>
                       </button>
                       <button className="flex items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
                         <FaUsers className="text-purple-600 mr-3" />
-                        <span className="text-purple-900 font-medium">Skupinové lekcie</span>
+                        <span className="text-purple-900 font-medium">Skupinové tréningy</span>
                       </button>
                     </div>
                   </div>
@@ -284,7 +294,7 @@ export default function Dashboard() {
           {/* Sessions */}
           {activeSection === 'sessions' && user.role === 'owner' && (
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Skupinové lekcie</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Skupinové tréningy</h2>
               <OwnerCalendar />
             </div>
           )}
@@ -297,7 +307,7 @@ export default function Dashboard() {
           {/* Trainer Sessions - List View */}
           {activeSection === 'sessions' && user.role === 'trainer' && (
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Lekcie</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Tréningy</h2>
               <SessionsListTrainer />
             </div>
           )}

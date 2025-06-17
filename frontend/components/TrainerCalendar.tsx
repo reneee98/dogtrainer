@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiRequest } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Session {
   id: string;
@@ -25,6 +26,7 @@ interface CalendarEvent {
 }
 
 const TrainerCalendar = () => {
+  const { token } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,19 +34,28 @@ const TrainerCalendar = () => {
   const [showSessionModal, setShowSessionModal] = useState(false);
 
   useEffect(() => {
-    fetchSessions();
-  }, [currentDate]);
+    if (token) {
+      fetchSessions();
+    }
+  }, [currentDate, token]);
 
   const fetchSessions = async () => {
+    if (!token) {
+      console.log('No token available');
+      return;
+    }
+
     try {
       setLoading(true);
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth() + 1;
+      console.log('Fetching sessions with token:', token ? 'present' : 'missing');
       
-      const response = await apiRequest(`/sessions?year=${year}&month=${month}`);
+      const response = await apiRequest('/sessions', { token });
+      console.log('Sessions response:', response);
 
       if (response.success && response.data?.data) {
         const sessions = response.data.data;
+        console.log('Sessions found:', sessions.length);
+        
         const events: CalendarEvent[] = sessions.map((session: Session) => ({
           id: `session-${session.id}`,
           title: session.title,
@@ -53,7 +64,11 @@ const TrainerCalendar = () => {
           session,
           color: getSessionColor(session.session_type, session.status)
         }));
+        
+        console.log('Events created:', events);
         setEvents(events);
+      } else {
+        console.log('No sessions data in response');
       }
     } catch (error) {
       console.error('Error fetching sessions:', error);
