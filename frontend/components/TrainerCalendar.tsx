@@ -559,86 +559,284 @@ const TrainerCalendar = () => {
   };
 
   const renderMonthView = () => {
+    // Get sessions for selected date (only on mobile)
+    const selectedDateSessions = selectedDate ? getSessionsForDate(selectedDate) : [];
+    
     return (
-      <div className="space-y-2">
+      <div className="space-y-4">
         {/* Day headers */}
-        <div className="grid grid-cols-7 gap-1 mb-2">
+        <div className="grid grid-cols-7 gap-0 mb-2">
           {dayNames.map((day) => (
             <div key={day} className="h-8 flex items-center justify-center">
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 {day}
               </span>
             </div>
           ))}
         </div>
 
-        {/* Calendar days */}
-        <div className="grid grid-cols-7 gap-1">
+        {/* Calendar days - Apple style compact */}
+        <div className="grid grid-cols-7 gap-0 bg-white rounded-xl overflow-hidden">
           {getDaysInMonth().map((date, index) => {
             const daySessions = getSessionsForDate(date);
             const isCurrentMonthDay = isCurrentMonth(date);
             const isTodayDay = isToday(date);
+            const isSelected = selectedDate && 
+              selectedDate.getDate() === date.getDate() && 
+              selectedDate.getMonth() === date.getMonth();
 
             return (
-              <div
+              <button
                 key={index}
+                onClick={() => {
+                  if (!isCurrentMonthDay) return;
+                  
+                  // On mobile, select date for session list
+                  if (window.innerWidth < 640) {
+                    setSelectedDate(date);
+                  } else if (daySessions.length > 0) {
+                    // On desktop, show modal for first session
+                    handleSessionClick(daySessions[0]);
+                  } else {
+                    // No sessions, create new one
+                    handleCreateSessionClick(date);
+                  }
+                }}
                 className={`
-                  relative min-h-[80px] sm:min-h-[100px] p-1 sm:p-2 border border-gray-50 rounded-lg transition-all 
-                  hover:bg-gray-25 hover:border-gray-200 hover:shadow-sm group
+                  h-12 sm:h-16 lg:h-20 relative flex flex-col items-center justify-center group
+                  border-r border-b border-gray-100 last:border-r-0
+                  transition-all duration-200 hover:bg-gray-50 active:bg-gray-100
                   ${!isCurrentMonthDay ? 'opacity-30' : ''}
-                  ${isTodayDay ? 'bg-blue-50 border-blue-200' : 'bg-white'}
+                  ${isTodayDay ? 'bg-blue-50' : ''}
+                  ${isSelected ? 'bg-blue-100 ring-2 ring-blue-500 ring-inset' : ''}
+                  cursor-pointer
                 `}
+                disabled={!isCurrentMonthDay}
               >
+                {/* Date number */}
                 <div className={`
-                  text-sm font-medium mb-1
-                  ${isTodayDay ? 'text-blue-600' : isCurrentMonthDay ? 'text-gray-900' : 'text-gray-400'}
+                  text-sm sm:text-base font-medium mb-1
+                  ${isTodayDay ? 'bg-blue-500 text-white w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs sm:text-sm' : 
+                    isCurrentMonthDay ? 'text-gray-900' : 'text-gray-400'}
                 `}>
                   {date.getDate()}
                 </div>
                 
-                <div className="space-y-1">
-                  {daySessions.slice(0, window.innerWidth < 640 ? 2 : 3).map((session) => (
-                    <button
-                      key={session.id}
-                      onClick={() => handleSessionClick(session)}
-                      className={`
-                        w-full text-left px-1 sm:px-2 py-1 rounded-md text-xs font-medium
-                        transition-all hover:scale-105 cursor-pointer
-                        ${getSessionTypeColor(session.session_type, session.status)} text-white
-                      `}
-                    >
-                      <div className="truncate">{session.title}</div>
-                      <div className="text-xs opacity-90 hidden sm:block">
-                        {formatTime(session.start_time)}
-                      </div>
-                    </button>
-                  ))}
-                  {daySessions.length > (window.innerWidth < 640 ? 2 : 3) && (
-                    <div className="text-xs text-gray-500 px-1 sm:px-2">
-                      +{daySessions.length - (window.innerWidth < 640 ? 2 : 3)} viac
-                    </div>
-                  )}
-                </div>
-
-                {/* Plus Icon for Creating New Session */}
-                {isCurrentMonthDay && (
-                  <button
-                    onClick={() => handleCreateSessionClick(date)}
-                    className="
-                      absolute top-1 sm:top-2 right-1 sm:right-2 p-1 rounded-full bg-blue-500 text-white
-                      opacity-0 group-hover:opacity-100 transition-all duration-200
-                      hover:bg-blue-600 hover:scale-110 transform
-                      focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                    "
-                    title="Vytvoriť nový tréning"
-                  >
-                    <PlusIcon className="h-3 sm:h-4 w-3 sm:w-4" />
-                  </button>
+                {/* Activity indicators - Apple style dots/lines */}
+                {daySessions.length > 0 && (
+                  <div className="flex items-center justify-center space-x-0.5 absolute bottom-1 sm:bottom-2">
+                    {daySessions.slice(0, 4).map((session, idx) => {
+                      const color = session.session_type === 'individual' ? 'bg-blue-500' : 
+                                   session.session_type === 'group' ? 'bg-green-500' : 'bg-purple-500';
+                      
+                      return daySessions.length === 1 ? (
+                        // Single session - line
+                        <div
+                          key={idx}
+                          className={`w-4 sm:w-6 h-0.5 sm:h-1 rounded-full ${color}`}
+                        />
+                      ) : (
+                        // Multiple sessions - dots
+                        <div
+                          key={idx}
+                          className={`w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full ${color}`}
+                        />
+                      );
+                    })}
+                    {daySessions.length > 4 && (
+                      <div className="w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-gray-400" />
+                    )}
+                  </div>
                 )}
-              </div>
+
+                {/* Plus Icon for Creating New Session - always visible on desktop hover, bottom-right on mobile */}
+                {isCurrentMonthDay && (
+                  <div className={`
+                    absolute ${window.innerWidth < 640 ? 'top-1 right-1' : 'top-1 sm:top-2 right-1 sm:right-2'}
+                    ${window.innerWidth < 640 ? 'opacity-40' : 'opacity-0 group-hover:opacity-100'}
+                    transition-all duration-200
+                  `}>
+                    <div 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCreateSessionClick(date);
+                      }}
+                      className="
+                        p-1 rounded-full bg-blue-500 text-white
+                        hover:bg-blue-600 hover:scale-110 transform
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                        cursor-pointer
+                      "
+                      title="Vytvoriť nový tréning"
+                    >
+                      <PlusIcon className="h-3 sm:h-4 w-3 sm:w-4" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Desktop hover preview */}
+                {daySessions.length > 0 && window.innerWidth >= 640 && (
+                  <div className="hidden group-hover:block absolute top-full left-0 z-20 mt-1 w-48 p-2 bg-white rounded-lg shadow-lg border border-gray-200">
+                    {daySessions.slice(0, 3).map((session) => (
+                      <div key={session.id} className="text-xs text-left p-1">
+                        <div className="font-medium text-gray-900 truncate">{session.title}</div>
+                        <div className="text-gray-500">{formatTime(session.start_time)}</div>
+                        <div className="text-gray-400">{getStatusLabel(session.status)}</div>
+                      </div>
+                    ))}
+                    {daySessions.length > 3 && (
+                      <div className="text-xs text-gray-500 px-1">+{daySessions.length - 3} viac</div>
+                    )}
+                  </div>
+                )}
+              </button>
             );
           })}
         </div>
+
+        {/* Mobile: Selected date sessions list */}
+        {selectedDate && (
+          <div className="sm:hidden mt-6 bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-gray-900">
+                  {selectedDate.toLocaleDateString('sk-SK', { 
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long'
+                  })}
+                </h3>
+                <button
+                  onClick={() => setSelectedDate(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Create session button */}
+            <div className="p-4 border-b border-gray-100">
+              <button
+                onClick={() => handleCreateSessionClick(selectedDate)}
+                className="w-full flex items-center justify-center space-x-2 p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 active:bg-blue-700 transition-colors"
+              >
+                <PlusIcon className="h-5 w-5" />
+                <span className="font-medium">Vytvoriť nový tréning</span>
+              </button>
+            </div>
+
+            {/* Sessions list */}
+            {selectedDateSessions.length > 0 ? (
+              <div className="divide-y divide-gray-100">
+                {selectedDateSessions.map((session) => {
+                  const typeColor = getSessionTypeColor(session.session_type, session.status);
+                  
+                  return (
+                    <button
+                      key={session.id}
+                      onClick={() => handleSessionClick(session)}
+                      className="w-full p-4 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-start space-x-3">
+                        {/* Time & Status indicator */}
+                        <div className="flex flex-col items-center space-y-1 flex-shrink-0">
+                          <div className="text-sm font-medium text-gray-900">
+                            {formatTime(session.start_time)}
+                          </div>
+                          <div className={`w-2 h-2 rounded-full ${
+                            typeColor.includes('blue') ? 'bg-blue-500' :
+                            typeColor.includes('green') ? 'bg-green-500' : 
+                            typeColor.includes('red') ? 'bg-red-500' : 'bg-gray-400'
+                          }`} />
+                        </div>
+                        
+                        {/* Session details */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-base font-medium text-gray-900 truncate">
+                            {session.title}
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {getSessionTypeLabel(session.session_type)} • {getStatusLabel(session.status)}
+                          </p>
+                          {session.location && (
+                            <p className="text-sm text-gray-500 mt-1">
+                              📍 {session.location}
+                            </p>
+                          )}
+                          
+                          {/* Participants count */}
+                          {session.signups && (
+                            <div className="flex items-center space-x-2 mt-2">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                👥 {session.signups.length}/{session.capacity} účastníkov
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Price */}
+                        <div className="text-right flex-shrink-0">
+                          <div className="text-lg font-bold text-gray-900">
+                            {session.price}€
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-6 text-center text-gray-500">
+                <CalendarIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p>Žiadne tréningy na tento deň</p>
+                <p className="text-sm mt-1">Vytvorte nový tréning kliknutím na tlačidlo vyššie</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Mobile: Today's sessions quick preview */}
+        {!selectedDate && (
+          <div className="sm:hidden">
+            {(() => {
+              const todaySessions = getSessionsForDate(new Date());
+              if (todaySessions.length === 0) return null;
+              
+              return (
+                <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                  <h3 className="font-semibold text-blue-900 mb-3">Dnešné tréningy</h3>
+                  <div className="space-y-2">
+                    {todaySessions.slice(0, 2).map((session) => (
+                      <button
+                        key={session.id}
+                        onClick={() => handleSessionClick(session)}
+                        className="w-full flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200 hover:bg-blue-25 active:bg-blue-100 transition-colors"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="text-sm font-medium text-blue-900">
+                            {formatTime(session.start_time)}
+                          </div>
+                          <div className="text-sm text-blue-800 truncate">
+                            {session.title}
+                          </div>
+                        </div>
+                        <div className="text-sm font-bold text-blue-900">
+                          {session.signups?.length || 0}/{session.capacity}
+                        </div>
+                      </button>
+                    ))}
+                    {todaySessions.length > 2 && (
+                      <div className="text-center text-sm text-blue-700">
+                        +{todaySessions.length - 2} viac tréningov
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
       </div>
     );
   };
@@ -892,7 +1090,7 @@ const TrainerCalendar = () => {
       {/* Session Form Modal */}
       {showSessionForm && (
         <SessionForm
-          selectedDate={selectedDate}
+          date={selectedDate}
           onClose={handleSessionFormClose}
           onSuccess={handleSessionFormSuccess}
         />

@@ -51,6 +51,7 @@ const OwnerCalendar = () => {
   const [isBooking, setIsBooking] = useState(false);
   const [touchStartX, setTouchStartX] = useState(0);
   const [touchEndX, setTouchEndX] = useState(0);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
 
   // Auto-select best view mode based on screen size
@@ -569,69 +570,239 @@ const OwnerCalendar = () => {
   };
 
   const renderMonthView = () => {
+    // Get sessions for selected date (only on mobile)
+    const selectedDateSessions = selectedDate ? getSessionsForDate(selectedDate) : [];
+    
     return (
-      <div className="space-y-2">
+      <div className="space-y-4">
         {/* Day headers */}
-        <div className="grid grid-cols-7 gap-1 mb-2">
+        <div className="grid grid-cols-7 gap-0 mb-2">
           {dayNames.map((day) => (
             <div key={day} className="h-8 flex items-center justify-center">
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 {day}
               </span>
             </div>
           ))}
         </div>
 
-        {/* Calendar days */}
-        <div className="grid grid-cols-7 gap-1">
+        {/* Calendar days - Apple style compact */}
+        <div className="grid grid-cols-7 gap-0 bg-white rounded-xl overflow-hidden">
           {getDaysInMonth().map((date, index) => {
             const daySessions = getSessionsForDate(date);
             const isCurrentMonthDay = isCurrentMonth(date);
             const isTodayDay = isToday(date);
+            const isSelected = selectedDate && 
+              selectedDate.getDate() === date.getDate() && 
+              selectedDate.getMonth() === date.getMonth();
 
             return (
-              <div
+              <button
                 key={index}
+                onClick={() => {
+                  // Only set selected date on mobile when there are sessions
+                  if (window.innerWidth < 640 && daySessions.length > 0) {
+                    setSelectedDate(date);
+                  } else if (window.innerWidth >= 640 && daySessions.length > 0) {
+                    // On desktop, show modal for first session
+                    handleSessionClick(daySessions[0]);
+                  }
+                }}
                 className={`
-                  min-h-[80px] sm:min-h-[100px] p-1 sm:p-2 border border-gray-50 rounded-lg transition-all hover:bg-gray-25
+                  h-12 sm:h-16 lg:h-20 relative flex flex-col items-center justify-center
+                  border-r border-b border-gray-100 last:border-r-0
+                  transition-all duration-200 hover:bg-gray-50 active:bg-gray-100
                   ${!isCurrentMonthDay ? 'opacity-30' : ''}
-                  ${isTodayDay ? 'bg-blue-50 border-blue-200' : 'bg-white'}
+                  ${isTodayDay ? 'bg-blue-50' : ''}
+                  ${isSelected ? 'bg-blue-100 ring-2 ring-blue-500 ring-inset' : ''}
+                  ${daySessions.length > 0 ? 'cursor-pointer' : 'cursor-default'}
                 `}
+                disabled={!isCurrentMonthDay || daySessions.length === 0}
               >
+                {/* Date number */}
                 <div className={`
-                  text-sm font-medium mb-1
-                  ${isTodayDay ? 'text-blue-600' : isCurrentMonthDay ? 'text-gray-900' : 'text-gray-400'}
+                  text-sm sm:text-base font-medium mb-1
+                  ${isTodayDay ? 'bg-blue-500 text-white w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs sm:text-sm' : 
+                    isCurrentMonthDay ? 'text-gray-900' : 'text-gray-400'}
                 `}>
                   {date.getDate()}
                 </div>
                 
-                <div className="space-y-1">
-                  {daySessions.slice(0, window.innerWidth < 640 ? 2 : 3).map((session) => (
-                    <button
-                      key={session.id}
-                      onClick={() => handleSessionClick(session)}
-                      className={`
-                        w-full text-left px-1 sm:px-2 py-1 rounded-md text-xs font-medium
-                        transition-all hover:scale-105 cursor-pointer
-                        ${getSessionTypeColor(session.session_type)} text-white
-                      `}
-                    >
-                      <div className="truncate">{session.title}</div>
-                      <div className="text-xs opacity-90 hidden sm:block">
-                        {formatTime(session.start_time)}
+                {/* Activity indicators - Apple style dots/lines */}
+                {daySessions.length > 0 && (
+                  <div className="flex items-center justify-center space-x-0.5 absolute bottom-1 sm:bottom-2">
+                    {daySessions.slice(0, 4).map((session, idx) => {
+                      const color = session.session_type === 'individual' ? 'bg-blue-500' : 
+                                   session.session_type === 'group' ? 'bg-green-500' : 'bg-purple-500';
+                      
+                      return daySessions.length === 1 ? (
+                        // Single session - line
+                        <div
+                          key={idx}
+                          className={`w-4 sm:w-6 h-0.5 sm:h-1 rounded-full ${color}`}
+                        />
+                      ) : (
+                        // Multiple sessions - dots
+                        <div
+                          key={idx}
+                          className={`w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full ${color}`}
+                        />
+                      );
+                    })}
+                    {daySessions.length > 4 && (
+                      <div className="w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-gray-400" />
+                    )}
+                  </div>
+                )}
+
+                {/* Desktop hover preview */}
+                {daySessions.length > 0 && window.innerWidth >= 640 && (
+                  <div className="hidden group-hover:block absolute top-full left-0 z-20 mt-1 w-48 p-2 bg-white rounded-lg shadow-lg border border-gray-200">
+                    {daySessions.slice(0, 3).map((session) => (
+                      <div key={session.id} className="text-xs text-left p-1">
+                        <div className="font-medium text-gray-900 truncate">{session.title}</div>
+                        <div className="text-gray-500">{formatTime(session.start_time)}</div>
                       </div>
-                    </button>
-                  ))}
-                  {daySessions.length > (window.innerWidth < 640 ? 2 : 3) && (
-                    <div className="text-xs text-gray-500 px-1 sm:px-2">
-                      +{daySessions.length - (window.innerWidth < 640 ? 2 : 3)} viac
-                    </div>
-                  )}
-                </div>
-              </div>
+                    ))}
+                    {daySessions.length > 3 && (
+                      <div className="text-xs text-gray-500 px-1">+{daySessions.length - 3} viac</div>
+                    )}
+                  </div>
+                )}
+              </button>
             );
           })}
         </div>
+
+        {/* Mobile: Selected date sessions list */}
+        {selectedDate && selectedDateSessions.length > 0 && (
+          <div className="sm:hidden mt-6 bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-gray-900">
+                  {formatDate(selectedDate.toISOString())}
+                </h3>
+                <button
+                  onClick={() => setSelectedDate(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {selectedDateSessions.map((session) => {
+                const typeColor = getSessionTypeColor(session.session_type);
+                const isSignedUp = isUserSignedUp(session);
+                const isFull = isSessionFull(session);
+                
+                return (
+                  <button
+                    key={session.id}
+                    onClick={() => handleSessionClick(session)}
+                    className="w-full p-4 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-start space-x-3">
+                      {/* Time & Status indicator */}
+                      <div className="flex flex-col items-center space-y-1 flex-shrink-0">
+                        <div className="text-sm font-medium text-gray-900">
+                          {formatTime(session.start_time)}
+                        </div>
+                        <div className={`w-2 h-2 rounded-full ${
+                          typeColor.includes('blue') ? 'bg-blue-500' :
+                          typeColor.includes('green') ? 'bg-green-500' : 'bg-purple-500'
+                        }`} />
+                      </div>
+                      
+                      {/* Session details */}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-base font-medium text-gray-900 truncate">
+                          {session.title}
+                        </h4>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {getSessionTypeLabel(session.session_type)} • {session.trainer.name}
+                        </p>
+                        {session.location && (
+                          <p className="text-sm text-gray-500 mt-1">
+                            📍 {session.location}
+                          </p>
+                        )}
+                        
+                        {/* Status badges */}
+                        <div className="flex items-center space-x-2 mt-2">
+                          {isSignedUp && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              ✓ Prihlásený
+                            </span>
+                          )}
+                          {isFull && !isSignedUp && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              Obsadené
+                            </span>
+                          )}
+                          {session.available_spots !== undefined && session.available_spots > 0 && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {session.available_spots} miest
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Price */}
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-lg font-bold text-gray-900">
+                          {session.price}€
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Mobile: Today's sessions quick preview */}
+        {!selectedDate && (
+          <div className="sm:hidden">
+            {(() => {
+              const todaySessions = getSessionsForDate(new Date());
+              if (todaySessions.length === 0) return null;
+              
+              return (
+                <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                  <h3 className="font-semibold text-blue-900 mb-3">Dnešné tréningy</h3>
+                  <div className="space-y-2">
+                    {todaySessions.slice(0, 2).map((session) => (
+                      <button
+                        key={session.id}
+                        onClick={() => handleSessionClick(session)}
+                        className="w-full flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200 hover:bg-blue-25 active:bg-blue-100 transition-colors"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="text-sm font-medium text-blue-900">
+                            {formatTime(session.start_time)}
+                          </div>
+                          <div className="text-sm text-blue-800 truncate">
+                            {session.title}
+                          </div>
+                        </div>
+                        <div className="text-sm font-bold text-blue-900">
+                          {session.price}€
+                        </div>
+                      </button>
+                    ))}
+                    {todaySessions.length > 2 && (
+                      <div className="text-center text-sm text-blue-700">
+                        +{todaySessions.length - 2} viac tréningov
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
       </div>
     );
   };
