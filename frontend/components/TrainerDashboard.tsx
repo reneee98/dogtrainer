@@ -323,33 +323,18 @@ export default function TrainerDashboard({ setActiveSection }: TrainerDashboardP
   };
 
   const handleDeleteSession = async (sessionId: string) => {
-    // Check if session has approved signups first
-    const session = selectedSession;
-    const hasApprovedSignups = session?.signups?.some((signup: any) => signup.status === 'approved');
-    
-    if (hasApprovedSignups) {
-      alert('Nemôžete zmazať tréning so schválenými účastníkmi. Najprv zrušte všetky schválené prihlášky kliknutím na "Zamietnuť" pri každom schválenom účastníkovi, potom môžete tréning zmazať.');
-      return;
-    }
-
     if (!window.confirm('Ste si istí, že chcete zmazať tento tréning?')) {
       return;
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/sessions/${sessionId}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/sessions/${sessionId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json',
         },
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Chyba pri mazaní tréningu');
-      }
       
       setShowSessionModal(false);
       setSelectedSession(null);
@@ -358,17 +343,13 @@ export default function TrainerDashboard({ setActiveSection }: TrainerDashboardP
       alert('Tréning bol úspešne zmazaný');
     } catch (error) {
       console.error('Error deleting session:', error);
-      if (error instanceof Error) {
-        alert(error.message);
-      } else {
-        alert('Chyba pri mazaní tréningu');
-      }
+      alert('Chyba pri mazaní tréningu');
     }
   };
 
   const handleApproveSignup = async (sessionId: string, signupId: string) => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/sessions/${sessionId}/signups/${signupId}/approve`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/sessions/${sessionId}/signups/${signupId}/approve`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -389,7 +370,7 @@ export default function TrainerDashboard({ setActiveSection }: TrainerDashboardP
     const reason = window.prompt('Dôvod zamietnutia (nepovinné):');
     
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/sessions/${sessionId}/signups/${signupId}/reject`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/sessions/${sessionId}/signups/${signupId}/reject`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
