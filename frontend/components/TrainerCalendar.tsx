@@ -561,93 +561,77 @@ const TrainerCalendar = () => {
                 </div>
               </div>
 
-              {/* Desktop: Detailed layout */}
+              {/* Desktop: Enhanced row layout with more details */}
               <div className="hidden sm:block">
                 <div className="space-y-3">
-                  {/* Header with service name and price */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-2">
-                      <div className={`w-2 h-2 rounded-full ${getSessionColor(session)} flex-shrink-0 mt-1.5`}></div>
-                      <div>
+                  {/* Main row with all key info */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4 flex-1">
+                      <div className={`w-3 h-3 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
+                      <div className="flex-1">
                         <div className="font-medium text-gray-900">
-                          {getSessionLabel(session)}
+                          {formatTime(session.start_time)} - {formatTime(session.end_time)} • {getSessionLabel(session)}
                         </div>
-                        <div className={`text-xs px-2 py-0.5 rounded-full inline-flex items-center mt-1 ${
-                          isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
-                          session.status === 'scheduled' ? 'bg-green-100 text-green-700' :
-                          session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
-                          {getDisplayStatus(session)}
+                        <div className="text-sm text-gray-500 mt-0.5">
+                          {session.location} • {session.signups?.length || 0}/{session.capacity} účastníkov
                         </div>
                       </div>
                     </div>
-                    <div className="text-lg font-semibold text-gray-900">
-                      {session.price}€
+                    <div className="flex items-center space-x-3">
+                      <div className={`text-xs px-2 py-1 rounded-full ${
+                        isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
+                        session.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+                        session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {getDisplayStatus(session)}
+                      </div>
+                      <div className="text-lg font-semibold text-gray-900">
+                        {session.price}€
+                      </div>
                     </div>
                   </div>
 
-                  {/* Session details */}
-                  <div className="space-y-2 border-t border-gray-100 pt-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Dátum:</span>
-                      <span className="text-sm font-medium text-gray-900">
-                        {formatRelativeDate(session.start_time)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Čas:</span>
-                      <span className="text-sm text-gray-900">
-                        {formatTime(session.start_time)} - {formatTime(session.end_time)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Lokácia:</span>
-                      <span className="text-sm text-gray-900 truncate max-w-[60%] text-right">
-                        {session.location}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Účastníci:</span>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-900">
-                          {session.signups?.length || 0}/{session.capacity}
-                        </span>
-                        {session.capacity > 0 && (
-                          <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                  {/* Progress bar and additional details */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4 flex-1">
+                      {session.capacity > 0 && (
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-gray-500">Obsadenosť:</span>
+                          <div className="w-24 bg-gray-200 rounded-full h-2">
                             <div 
-                              className="h-1.5 rounded-full bg-blue-500"
+                              className="h-2 rounded-full bg-blue-500"
                               style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
                             ></div>
                           </div>
-                        )}
-                      </div>
+                          <span className="text-xs text-gray-500">
+                            {Math.round(((session.signups?.length || 0) / session.capacity) * 100)}%
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex justify-end space-x-2 border-t border-gray-100 pt-3">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditSession(session);
-                      }}
-                      className="px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                    >
-                      Upraviť
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteSession(session.id);
-                      }}
-                      className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded transition-colors"
-                    >
-                      Zmazať
-                    </button>
+                    
+                    {/* Actions */}
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditSession(session);
+                        }}
+                        className="px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      >
+                        Upraviť
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSession(session.id);
+                        }}
+                        className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded transition-colors"
+                      >
+                        Zmazať
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
