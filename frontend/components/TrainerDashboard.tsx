@@ -12,7 +12,7 @@ import { sessionApi, bookingApi, reviewApi } from '../lib/api';
 import { format, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { sk } from 'date-fns/locale';
 import ClientRequestsManagement from './ClientRequestsManagement';
-import PendingSignupsOverview from './PendingSignupsOverview';
+import PendingApprovalsCompact from './PendingApprovalsCompact';
 
 export default function TrainerDashboard() {
   const { token, user } = useAuth();
@@ -172,9 +172,7 @@ export default function TrainerDashboard() {
     }
   }) : [];
 
-  const pendingBookings = Array.isArray(bookingsList) ? bookingsList.filter((booking: any) => 
-    booking?.status === 'pending'
-  ) : [];
+  // Removed pendingBookings as we no longer show pending bookings
 
   const upcomingSessions = Array.isArray(sessionsList) ? sessionsList.filter((session: any) => {
     try {
@@ -202,14 +200,6 @@ export default function TrainerDashboard() {
       color: 'text-green-600',
       bgColor: 'bg-green-50',
       iconBg: 'bg-green-100',
-    },
-    {
-      name: 'Čakajúce potvrdenie',
-      value: pendingBookings.length,
-      icon: UsersIcon,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50',
-      iconBg: 'bg-yellow-100',
     },
     {
       name: 'Priemerné hodnotenie',
@@ -251,9 +241,9 @@ export default function TrainerDashboard() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Upcoming Sessions */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                 <CalendarDaysIcon className="h-5 w-5 text-blue-600 mr-2" />
@@ -291,44 +281,9 @@ export default function TrainerDashboard() {
             </div>
           </div>
 
-          {/* Pending Bookings */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <CheckCircleIcon className="h-5 w-5 text-yellow-600 mr-2" />
-                Čakajúce rezervácie
-              </h3>
-            </div>
-            <div className="p-6">
-              {pendingBookings.length === 0 ? (
-                <div className="text-center py-8">
-                  <CheckCircleIcon className="mx-auto h-12 w-12 text-gray-300" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">Žiadne čakajúce rezervácie</h3>
-                  <p className="mt-1 text-sm text-gray-500">Všetky rezervácie sú spracované.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {pendingBookings.slice(0, 5).map((booking: any) => (
-                    <div key={booking.id} className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900">{booking.service_type || 'Služba'}</div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          {booking.dog?.name || 'Neznámy pes'} • {booking.start_time ? format(new Date(booking.start_time), 'dd.MM.yyyy HH:mm', { locale: sk }) : 'Čas neurčený'}
-                        </div>
-                      </div>
-                      <div className="flex space-x-2 ml-4">
-                        <button className="px-3 py-1 text-xs font-medium bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
-                          Potvrdiť
-                        </button>
-                        <button className="px-3 py-1 text-xs font-medium bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
-                          Odmietnuť
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          {/* Pending Approvals - Compact */}
+          <div className="lg:col-span-1">
+            <PendingApprovalsCompact />
           </div>
         </div>
 
@@ -375,11 +330,6 @@ export default function TrainerDashboard() {
             </div>
           </div>
         )}
-
-        {/* Pending Signups Overview - Priority section */}
-        <div className="mt-8">
-          <PendingSignupsOverview />
-        </div>
 
         {/* Client Requests Management */}
         <div className="mt-8">
