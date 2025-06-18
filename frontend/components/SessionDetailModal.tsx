@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { XMarkIcon, PlusIcon, PlayIcon, StopIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { sessionApi, dogApi } from '../lib/api';
 import { toast } from 'react-toastify';
@@ -28,38 +28,26 @@ interface Session {
 interface SessionDetailModalProps {
   session: Session;
   onClose: () => void;
+  onEdit?: (session: Session) => void;
 }
 
-export default function SessionDetailModal({ session, onClose }: SessionDetailModalProps) {
+export default function SessionDetailModal({ session, onClose, onEdit }: SessionDetailModalProps) {
   const { token, user } = useAuth();
   const [showSignupForm, setShowSignupForm] = useState(false);
   const [selectedDogId, setSelectedDogId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
 
-  // Mutation for starting session
-  const startSessionMutation = useMutation({
-    mutationFn: () => sessionApi.update(token!, parseInt(session.id), { status: 'active' }),
+  // Mutation for deleting session
+  const deleteSessionMutation = useMutation({
+    mutationFn: () => sessionApi.delete(token!, parseInt(session.id)),
     onSuccess: () => {
-      toast.success('Tréning bol úspešne spustený');
+      toast.success('Tréning bol úspešne vymazaný');
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['session', session.id] });
+      onClose();
     },
     onError: (error: any) => {
-      toast.error(error?.message || 'Chyba pri spustení tréningu');
-    }
-  });
-
-  // Mutation for ending session
-  const endSessionMutation = useMutation({
-    mutationFn: () => sessionApi.update(token!, parseInt(session.id), { status: 'completed' }),
-    onSuccess: () => {
-      toast.success('Tréning bol úspešne ukončený');
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['session', session.id] });
-    },
-    onError: (error: any) => {
-      toast.error(error?.message || 'Chyba pri ukončení tréningu');
+      toast.error(error?.message || 'Chyba pri mazaní tréningu');
     }
   });
 
@@ -95,6 +83,21 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
     }
   };
 
+  const handleEditSession = () => {
+    if (onEdit) {
+      onEdit(session);
+      onClose();
+    } else {
+      toast.info('Editácia tréningu nie je dostupná');
+    }
+  };
+
+  const handleDeleteSession = () => {
+    if (window.confirm('Naozaj chcete vymazať tento tréning? Táto akcia sa nedá vrátiť späť.')) {
+      deleteSessionMutation.mutate();
+    }
+  };
+
   const isOwner = user?.role === 'owner';
   const isTrainer = user?.role === 'trainer';
   
@@ -103,25 +106,9 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
   const isFull = currentSignups >= session.capacity;
   const canSignup = isOwner && (session.status === 'scheduled' || session.status === 'active') && !isFull;
 
-  // Session control handlers
-  const handleStartSession = () => {
-    const minimumParticipants = session.minimum_participants || 1;
-    if (currentSignups < minimumParticipants) {
-      toast.error(`Tréning môže byť spustený len ak má aspoň ${minimumParticipants} schválených účastníkov (aktuálne: ${currentSignups})`);
-      return;
-    }
-    startSessionMutation.mutate();
-  };
-
-  const handleEndSession = () => {
-    endSessionMutation.mutate();
-  };
-
-  // Check if session can be started (minimum participants required)
+  // Check if session has minimum participants
   const minimumParticipants = session.minimum_participants || 1;
   const hasMinimumParticipants = currentSignups >= minimumParticipants;
-  const canStartSession = isTrainer && session.status === 'scheduled' && hasMinimumParticipants;
-  const canEndSession = isTrainer && session.status === 'active';
 
   // Enhanced debug logging
   console.log('SessionDetailModal Debug:', {
@@ -212,66 +199,34 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
             )}
           </div>
 
-          {/* Trainer Session Controls */}
+          {/* Trainer Session Actions */}
           {isTrainer && (
             <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
               <h4 className="font-medium text-gray-900 mb-3 flex items-center">
-                <PlayIcon className="h-5 w-5 text-blue-600 mr-2" />
-                Ovládanie tréningu
+                <PencilIcon className="h-5 w-5 text-blue-600 mr-2" />
+                Akcie tréningu
               </h4>
               
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-600">
-                  {!hasMinimumParticipants && session.status === 'scheduled' && (
-                    <p className="text-amber-600">
-                      ⚠️ Tréning potrebuje aspoň {minimumParticipants} účastníkov na spustenie (aktuálne: {currentSignups}/{session.capacity})
-                    </p>
-                  )}
-                  {hasMinimumParticipants && session.status === 'scheduled' && (
-                    <p className="text-green-600">
-                      ✅ Tréning je pripravený na spustenie - má {currentSignups} z minimálne {minimumParticipants} potrebných účastníkov
-                    </p>
-                  )}
-                  {session.status === 'active' && (
-                    <p className="text-blue-600">
-                      🏃‍♂️ Tréning prebieha - môžete ho ukončiť
-                    </p>
-                  )}
-                  {session.status === 'completed' && (
-                    <p className="text-gray-600">
-                      ✅ Tréning bol ukončený
-                    </p>
-                  )}
-                </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleEditSession}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center transition-colors"
+                >
+                  <PencilIcon className="h-4 w-4 mr-2" />
+                  Editovať
+                </button>
                 
-                <div className="flex space-x-2">
-                  {canStartSession && (
-                    <button
-                      onClick={handleStartSession}
-                      disabled={startSessionMutation.isPending}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center transition-colors"
-                    >
-                      <PlayIcon className="h-4 w-4 mr-2" />
-                      {startSessionMutation.isPending ? 'Spúšťa sa...' : 'Spustiť tréning'}
-                    </button>
-                  )}
-                  
-                  {canEndSession && (
-                    <button
-                      onClick={handleEndSession}
-                      disabled={endSessionMutation.isPending}
-                      className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center transition-colors"
-                    >
-                      <StopIcon className="h-4 w-4 mr-2" />
-                      {endSessionMutation.isPending ? 'Ukončuje sa...' : 'Ukončiť tréning'}
-                    </button>
-                  )}
-                </div>
+                <button
+                  onClick={handleDeleteSession}
+                  disabled={deleteSessionMutation.isPending}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center transition-colors"
+                >
+                  <TrashIcon className="h-4 w-4 mr-2" />
+                  {deleteSessionMutation.isPending ? 'Vymazáva sa...' : 'Vymazať'}
+                </button>
               </div>
             </div>
           )}
-
-
 
           {/* Owner Actions - ALWAYS SHOW FOR OWNERS */}
           {isOwner && (

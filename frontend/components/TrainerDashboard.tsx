@@ -7,7 +7,10 @@ import {
   ClockIcon,
   CheckCircleIcon,
   ChartBarIcon,
-  PlayIcon
+  PlayIcon,
+  XMarkIcon,
+  PencilIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { sessionApi, bookingApi, reviewApi } from '../lib/api';
@@ -15,7 +18,7 @@ import { format, startOfWeek, endOfWeek, isWithinInterval, differenceInMinutes, 
 import { sk } from 'date-fns/locale';
 import ClientRequestsManagement from './ClientRequestsManagement';
 import PendingApprovalsCompact from './PendingApprovalsCompact';
-import SessionDetailModal from './SessionDetailModal';
+import SessionForm from './SessionForm';
 
 interface TrainerDashboardProps {
   setActiveSection?: (section: string) => void;
@@ -26,6 +29,7 @@ export default function TrainerDashboard({ setActiveSection }: TrainerDashboardP
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [showSessionModal, setShowSessionModal] = useState(false);
+  const [showSessionForm, setShowSessionForm] = useState(false);
 
   // Update current time every second for countdown
   useEffect(() => {
@@ -312,6 +316,90 @@ export default function TrainerDashboard({ setActiveSection }: TrainerDashboardP
     setSelectedSession(null);
   };
 
+  const handleEditSession = (session: any) => {
+    setSelectedSession(session);
+    setShowSessionForm(true);
+    setShowSessionModal(false);
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!window.confirm('Ste si istí, že chcete zmazať tento tréning?')) {
+      return;
+    }
+
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      setShowSessionModal(false);
+      setSelectedSession(null);
+      // Refresh data
+      window.location.reload();
+      alert('Tréning bol úspešne zmazaný');
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      alert('Chyba pri mazaní tréningu');
+    }
+  };
+
+  const handleApproveSignup = async (sessionId: string, signupId: string) => {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/sessions/${sessionId}/signups/${signupId}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      // Refresh data
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Failed to approve signup:', error);
+      alert('Chyba pri schvaľovaní prihlášky');
+    }
+  };
+
+  const handleRejectSignup = async (sessionId: string, signupId: string) => {
+    const reason = window.prompt('Dôvod zamietnutia (nepovinné):');
+    
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/sessions/${sessionId}/signups/${signupId}/reject`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: reason || '' }),
+      });
+      
+      // Refresh data
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Failed to reject signup:', error);
+      alert('Chyba pri zamietnutí prihlášky');
+    }
+  };
+
+  const handleSessionFormClose = () => {
+    setShowSessionForm(false);
+    setSelectedSession(null);
+  };
+
+  const handleSessionFormSuccess = () => {
+    setShowSessionForm(false);
+    setSelectedSession(null);
+    // Refresh data
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -493,9 +581,180 @@ export default function TrainerDashboard({ setActiveSection }: TrainerDashboardP
 
       {/* Session Detail Modal */}
       {showSessionModal && selectedSession && (
-        <SessionDetailModal
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg sm:w-full max-h-[90vh] sm:max-h-[90vh] overflow-hidden">
+            {/* Mobile handle bar */}
+            <div className="flex justify-center py-3 sm:hidden">
+              <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
+            </div>
+
+            <div className="overflow-y-auto max-h-[85vh] sm:max-h-[80vh]">
+              <div className="p-4 sm:p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                      <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">
+                        {selectedSession.title || 'Tréning'}
+                      </h3>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className={`
+                        inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                        ${selectedSession.status === 'scheduled' ? 'bg-green-100 text-green-800' :
+                          selectedSession.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'}
+                      `}>
+                        {selectedSession.status === 'scheduled' ? 'Naplánované' :
+                         selectedSession.status === 'cancelled' ? 'Zrušené' : selectedSession.status}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleCloseSessionModal}
+                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-900 mb-4">Detaily tréningy</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Služba</span>
+                        <span className="font-medium text-gray-900">
+                          {selectedSession.title || 'Tréning'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Dátum</span>
+                        <span className="font-medium text-gray-900">
+                          {selectedSession.start_time ? format(new Date(selectedSession.start_time), 'dd.MM.yyyy', { locale: sk }) : 'Neurčený'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Čas</span>
+                        <span className="font-medium text-gray-900">
+                          {selectedSession.start_time && selectedSession.end_time 
+                            ? `${format(new Date(selectedSession.start_time), 'HH:mm')} - ${format(new Date(selectedSession.end_time), 'HH:mm')}`
+                            : 'Neurčený'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Miesto</span>
+                        <span className="font-medium text-gray-900">{selectedSession.location || 'Neurčené'}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Cena</span>
+                        <span className="font-medium text-gray-900 text-lg">{selectedSession.price || 0}€</span>
+                      </div>
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Kapacita</span>
+                        <span className="font-medium text-gray-900">
+                          {selectedSession.capacity || 0} miest
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-2">
+                        <span className="text-gray-600">Prihlásení</span>
+                        <span className="font-medium text-gray-900">
+                          {selectedSession.signups?.filter((s: any) => s.status === 'approved').length || 0}/{selectedSession.capacity || 0}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedSession.description && (
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-3">Popis tréningy</h4>
+                      <p className="text-gray-600 leading-relaxed">{selectedSession.description}</p>
+                    </div>
+                  )}
+
+                  {selectedSession.signups && selectedSession.signups.length > 0 && (
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-3">
+                        Prihlásení účastníci ({selectedSession.signups.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {selectedSession.signups.map((signup: any, index: number) => (
+                          <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <div>
+                                <div className="font-medium text-gray-900">
+                                  {signup.dog?.name || 'Neznámy pes'}
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  {signup.user?.name || signup.dog?.owner?.name || 'Neznámy majiteľ'}
+                                </div>
+                              </div>
+                              <span className={`
+                                px-2 py-1 rounded-full text-xs font-medium
+                                ${signup.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                  signup.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                                  'bg-red-100 text-red-800'}
+                              `}>
+                                {signup.status === 'approved' ? 'Schválené' :
+                                 signup.status === 'pending' ? 'Čaká' : 'Zamietnuté'}
+                              </span>
+                            </div>
+                            
+                            {/* Pending status actions */}
+                            {signup.status === 'pending' && (
+                              <div className="flex space-x-2 mt-2">
+                                <button
+                                  onClick={() => handleApproveSignup(selectedSession.id, signup.id)}
+                                  className="flex-1 px-3 py-1.5 bg-green-500 text-white text-sm rounded-md hover:bg-green-600 transition-colors"
+                                >
+                                  Schváliť
+                                </button>
+                                <button
+                                  onClick={() => handleRejectSignup(selectedSession.id, signup.id)}
+                                  className="flex-1 px-3 py-1.5 bg-red-500 text-white text-sm rounded-md hover:bg-red-600 transition-colors"
+                                >
+                                  Zamietnuť
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="border-t border-gray-200 pt-6">
+                    <div className="flex space-x-3">
+                      <button
+                        onClick={() => handleEditSession(selectedSession)}
+                        className="flex-1 flex items-center justify-center px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 active:bg-blue-700 transition-colors touch-manipulation"
+                      >
+                        <PencilIcon className="h-5 w-5 mr-2" />
+                        Upraviť
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSession(selectedSession.id)}
+                        className="flex-1 flex items-center justify-center px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 active:bg-red-700 transition-colors touch-manipulation"
+                      >
+                        <TrashIcon className="h-5 w-5 mr-2" />
+                        Zmazať
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Session Form Modal */}
+      {showSessionForm && (
+        <SessionForm
           session={selectedSession}
-          onClose={handleCloseSessionModal}
+          onClose={handleSessionFormClose}
+          onSuccess={handleSessionFormSuccess}
         />
       )}
     </div>
