@@ -130,6 +130,10 @@ export default function Dashboard() {
     setShowOnboarding(false);
   };
 
+  const handleRestartOnboarding = () => {
+    setShowOnboarding(true);
+  };
+
   // Close sidebar on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -525,7 +529,7 @@ export default function Dashboard() {
             )}
 
             {/* Other sections */}
-            {!['overview', 'dogs', 'calendar', 'sessions', 'schedule', 'services', 'daycare'].includes(activeSection) && (
+            {!['overview', 'dogs', 'calendar', 'sessions', 'schedule', 'services', 'daycare', 'settings'].includes(activeSection) && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
                 <FaCogs className="mx-auto text-4xl text-gray-400 mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -534,6 +538,126 @@ export default function Dashboard() {
                 <p className="text-gray-600 text-sm">
                   Táto funkcia bude čoskoro dostupná. Zatiaľ si môžete pozrieť prehľad.
                 </p>
+              </div>
+            )}
+
+            {/* Settings */}
+            {activeSection === 'settings' && (
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Nastavenia</h2>
+                
+                <div className="space-y-6">
+                  {/* Account Settings */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Nastavenia účtu</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between py-3 border-b border-gray-200">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900">Meno</h4>
+                          <p className="text-sm text-gray-600">{user.name}</p>
+                        </div>
+                        <button className="text-indigo-600 hover:text-indigo-700 text-sm font-medium">
+                          Upraviť
+                        </button>
+                      </div>
+                      
+                      <div className="flex items-center justify-between py-3 border-b border-gray-200">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900">Email</h4>
+                          <p className="text-sm text-gray-600">{user.email}</p>
+                        </div>
+                        <button className="text-indigo-600 hover:text-indigo-700 text-sm font-medium">
+                          Upraviť
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between py-3">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900">Rola</h4>
+                          <p className="text-sm text-gray-600 capitalize">
+                            {user.role === 'owner' ? 'Majiteľ psa' : 'Tréner'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Onboarding Settings - Only for owners */}
+                  {user.role === 'owner' && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Sprievodca nastavením</h3>
+                      
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="text-sm font-medium text-gray-900 mb-2">
+                            Nastavenie účtu
+                          </h4>
+                          <p className="text-sm text-gray-600 mb-4">
+                            Spustite znova sprievodcu nastavením účtu, ktorý vám pomôže pridať psa, vybrať trénera a prihlásiť sa na prvý tréning.
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleRestartOnboarding}
+                          className="ml-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
+                        >
+                          <FaCogs className="mr-2" />
+                          Spustiť sprievodcu
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notification Settings */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Notifikácie</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900">Email notifikácie</h4>
+                          <p className="text-sm text-gray-600">Dostávať notifikácie na email</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" defaultChecked className="sr-only peer" />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900">Push notifikácie</h4>
+                          <p className="text-sm text-gray-600">Dostávať push notifikácie</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" defaultChecked className="sr-only peer" />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Danger Zone */}
+                  <div className="bg-white rounded-xl shadow-sm border border-red-200 p-6">
+                    <h3 className="text-lg font-semibold text-red-900 mb-4">Zóna pozornosti</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="text-sm font-medium text-red-900 mb-2">
+                            Zmazať účet
+                          </h4>
+                          <p className="text-sm text-red-700">
+                            Permanentne zmaže váš účet a všetky súvisiace dáta. Táto akcia je nevratná.
+                          </p>
+                        </div>
+                        <button className="ml-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                          Zmazať účet
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
