@@ -119,9 +119,9 @@ export const sessionApi = {
   getSignups: (token: string, sessionId: string | number) => 
     apiRequest(`/sessions/${sessionId}/signups`, { token }),
   approveSignup: (token: string, sessionId: string | number, signupId: string) =>
-    apiRequest(`/sessions/${sessionId}/signups/${signupId}/approve`, { token, method: 'POST' }),
+    apiRequest(`/sessions/${sessionId}/signups/${signupId}/approve`, { token, method: 'PUT' }),
   rejectSignup: (token: string, sessionId: string | number, signupId: string, reason?: string) =>
-    apiRequest(`/sessions/${sessionId}/signups/${signupId}/reject`, { token, method: 'POST', body: { rejection_reason: reason } }),
+    apiRequest(`/sessions/${sessionId}/signups/${signupId}/reject`, { token, method: 'PUT', body: { rejection_reason: reason } }),
 };
 
 // Daycare Schedule API

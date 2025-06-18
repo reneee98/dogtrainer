@@ -242,20 +242,20 @@ export default function TrainerDashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Upcoming Sessions */}
+          {/* Closest Training */}
           <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                 <CalendarDaysIcon className="h-5 w-5 text-blue-600 mr-2" />
-                Nadchádzajúce relácie
+                Najbližší tréning
               </h3>
             </div>
             <div className="p-6">
               {upcomingSessions.length === 0 ? (
                 <div className="text-center py-8">
                   <CalendarDaysIcon className="mx-auto h-12 w-12 text-gray-300" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">Žiadne nadchádzajúce relácie</h3>
-                  <p className="mt-1 text-sm text-gray-500">Vytvorte nové relácie pre vašich klientov.</p>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">Žiadny najbližší tréning</h3>
+                  <p className="mt-1 text-sm text-gray-500">Vytvorte nové tréningy pre vašich klientov.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
