@@ -26,6 +26,7 @@ class Session extends Model
         'start_time',
         'end_time',
         'capacity',
+        'minimum_participants',
         'waitlist_enabled',
         'session_type',
         'price',
@@ -43,6 +44,7 @@ class Session extends Model
         'start_time' => 'datetime',
         'end_time' => 'datetime',
         'capacity' => 'integer',
+        'minimum_participants' => 'integer',
         'waitlist_enabled' => 'boolean',
         'price' => 'decimal:2',
         'cancelled_at' => 'datetime',
@@ -161,6 +163,24 @@ class Session extends Model
         return $this->status === 'scheduled' && 
                $this->start_time > now() && 
                (!$this->isFull() || $this->waitlist_enabled);
+    }
+
+    /**
+     * Check if session has minimum participants to start.
+     */
+    public function hasMinimumParticipants(): bool
+    {
+        return $this->approvedSignups()->count() >= $this->minimum_participants;
+    }
+
+    /**
+     * Check if session can be started.
+     */
+    public function canBeStarted(): bool
+    {
+        return $this->status === 'scheduled' && 
+               $this->hasMinimumParticipants() &&
+               $this->start_time <= now();
     }
 
     /**

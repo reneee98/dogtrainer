@@ -14,8 +14,12 @@ const sessionSchema = z.object({
   start_time: z.string().min(1, 'Vyberte dátum a čas začiatku'),
   duration: z.number().min(1, 'Vyberte trvanie').max(3, 'Maximálne trvanie je 3 hodiny'),
   capacity: z.number().min(1, 'Kapacita musí byť aspoň 1').max(20, 'Kapacita je príliš vysoká'),
+  minimum_participants: z.number().min(1, 'Minimálny počet účastníkov musí byť aspoň 1'),
   price: z.number().min(0, 'Cena musí byť kladné číslo'),
   waitlist_enabled: z.boolean().optional(),
+}).refine((data) => data.minimum_participants <= data.capacity, {
+  message: "Minimálny počet účastníkov nemôže byť vyšší ako kapacita",
+  path: ["minimum_participants"],
 });
 
 type SessionFormData = z.infer<typeof sessionSchema>;
@@ -29,6 +33,7 @@ interface Session {
   start_time: string;
   end_time: string;
   capacity: number;
+  minimum_participants?: number;
   price: number;
   waitlist_enabled: boolean;
 }
@@ -88,6 +93,7 @@ export default function SessionForm({ session, date, onClose, onSuccess }: Sessi
         ? calculateDuration(session.start_time, session.end_time)
         : 1,
       capacity: session?.capacity || 1,
+      minimum_participants: session?.minimum_participants || 1,
       price: session?.price || 0,
       waitlist_enabled: session?.waitlist_enabled || false,
     },
@@ -116,6 +122,7 @@ export default function SessionForm({ session, date, onClose, onSuccess }: Sessi
         start_time: new Date(data.start_time).toISOString(),
         end_time: endTime,
         capacity: data.capacity,
+        minimum_participants: data.minimum_participants,
         price: data.price,
         waitlist_enabled: data.waitlist_enabled,
       };
@@ -265,7 +272,7 @@ export default function SessionForm({ session, date, onClose, onSuccess }: Sessi
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Kapacita (počet psov)</label>
               <input
@@ -278,6 +285,21 @@ export default function SessionForm({ session, date, onClose, onSuccess }: Sessi
               />
               {errors.capacity && (
                 <p className="mt-1 text-sm text-red-600">{errors.capacity.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Min. účastníci na spustenie</label>
+              <input
+                {...register('minimum_participants', { valueAsNumber: true})}
+                type="number"
+                min="1"
+                max="20"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="1"
+              />
+              {errors.minimum_participants && (
+                <p className="mt-1 text-sm text-red-600">{errors.minimum_participants.message}</p>
               )}
             </div>
 

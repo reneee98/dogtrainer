@@ -16,6 +16,7 @@ interface Session {
   start_time: string;
   end_time: string;
   capacity: number;
+  minimum_participants?: number;
   current_signups?: number;
   available_spots?: number;
   status: string;
@@ -104,8 +105,9 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
 
   // Session control handlers
   const handleStartSession = () => {
-    if (!isFull) {
-      toast.error('Tréning môže byť spustený len ak sú všetky miesta obsadené');
+    const minimumParticipants = session.minimum_participants || 1;
+    if (currentSignups < minimumParticipants) {
+      toast.error(`Tréning môže byť spustený len ak má aspoň ${minimumParticipants} schválených účastníkov (aktuálne: ${currentSignups})`);
       return;
     }
     startSessionMutation.mutate();
@@ -115,8 +117,10 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
     endSessionMutation.mutate();
   };
 
-  // Check if session can be started (must be full)
-  const canStartSession = isTrainer && session.status === 'scheduled' && isFull;
+  // Check if session can be started (minimum participants required)
+  const minimumParticipants = session.minimum_participants || 1;
+  const hasMinimumParticipants = currentSignups >= minimumParticipants;
+  const canStartSession = isTrainer && session.status === 'scheduled' && hasMinimumParticipants;
   const canEndSession = isTrainer && session.status === 'active';
 
   // Enhanced debug logging
@@ -185,6 +189,19 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                   </span>
                 </div>
               </div>
+              <div>
+                <span className="font-medium text-gray-700">Min. účastníci:</span>
+                <div className="text-gray-900">
+                  <span className={hasMinimumParticipants ? 'text-green-600' : 'text-amber-600'}>
+                    {session.minimum_participants || 1}
+                  </span>
+                  {!hasMinimumParticipants && (
+                    <span className="text-xs text-amber-600 ml-1">
+                      (potrebuje ešte {(session.minimum_participants || 1) - currentSignups})
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
 
             {session.description && (
@@ -205,14 +222,14 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
               
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-600">
-                  {!isFull && session.status === 'scheduled' && (
+                  {!hasMinimumParticipants && session.status === 'scheduled' && (
                     <p className="text-amber-600">
-                      ⚠️ Tréning môže byť spustený len ak sú všetky miesta obsadené ({currentSignups}/{session.capacity})
+                      ⚠️ Tréning potrebuje aspoň {minimumParticipants} účastníkov na spustenie (aktuálne: {currentSignups}/{session.capacity})
                     </p>
                   )}
-                  {isFull && session.status === 'scheduled' && (
+                  {hasMinimumParticipants && session.status === 'scheduled' && (
                     <p className="text-green-600">
-                      ✅ Tréning je pripravený na spustenie - všetky miesta sú obsadené
+                      ✅ Tréning je pripravený na spustenie - má {currentSignups} z minimálne {minimumParticipants} potrebných účastníkov
                     </p>
                   )}
                   {session.status === 'active' && (
