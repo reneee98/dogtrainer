@@ -45,6 +45,7 @@ const OwnerCalendar = () => {
   const [touchEndX, setTouchEndX] = useState(0);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [serviceTemplates, setServiceTemplates] = useState<ServiceTemplate[]>([]);
+  const [showCompletedSessions, setShowCompletedSessions] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
 
   // Auto-select best view mode based on screen size
@@ -159,7 +160,17 @@ const OwnerCalendar = () => {
       const sessionDay = String(sessionDate.getDate()).padStart(2, '0');
       const sessionDateStr = `${sessionYear}-${sessionMonth}-${sessionDay}`;
       
-      return sessionDateStr === dateStr;
+      // Filter by date first
+      if (sessionDateStr !== dateStr) {
+        return false;
+      }
+      
+      // Filter completed sessions if not showing them
+      if (!showCompletedSessions && isSessionCompleted(session)) {
+        return false;
+      }
+      
+      return true;
     });
   };
 
@@ -173,10 +184,27 @@ const OwnerCalendar = () => {
       return sessions
         .filter(session => {
           const sessionDate = new Date(session.start_time);
-          return sessionDate >= startOfToday && sessionDate <= endOfToday;
+          
+          // Filter by date first
+          if (!(sessionDate >= startOfToday && sessionDate <= endOfToday)) {
+            return false;
+          }
+          
+          // Filter completed sessions if not showing them
+          if (!showCompletedSessions && isSessionCompleted(session)) {
+            return false;
+          }
+          
+          return true;
         })
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
     }
+    
+    // For week and month view, filter completed sessions
+    if (!showCompletedSessions) {
+      return sessions.filter(session => !isSessionCompleted(session));
+    }
+    
     return sessions;
   };
 
@@ -440,15 +468,33 @@ const OwnerCalendar = () => {
     const todaysSessions = getSessionsForPeriod();
     
     if (todaysSessions.length === 0) {
+      const hasCompletedToday = !showCompletedSessions && sessions.some(session => {
+        const sessionDate = new Date(session.start_time);
+        const today = new Date();
+        const isToday = sessionDate.toDateString() === today.toDateString();
+        return isToday && isSessionCompleted(session);
+      });
+
       return (
         <div className="text-center py-12">
           <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Žiadne dnešné tréningy
+            {hasCompletedToday ? 'Žiadne aktívne dnešné tréningy' : 'Žiadne dnešné tréningy'}
           </h3>
           <p className="text-gray-500 mb-6">
-            Dnes nie sú naplánované žiadne tréningy.
+            {hasCompletedToday 
+              ? 'Dnes nie sú naplánované žiadne aktívne tréningy. Dokončené tréningy môžete zobraziť pomocou filtra "Archivované".'
+              : 'Dnes nie sú naplánované žiadne tréningy.'
+            }
           </p>
+          {hasCompletedToday && (
+            <button
+              onClick={() => setShowCompletedSessions(true)}
+              className="bg-green-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-green-700 transition-colors"
+            >
+              Zobraziť archivované
+            </button>
+          )}
           {/* Owner cannot create sessions */}
         </div>
       );
@@ -456,8 +502,20 @@ const OwnerCalendar = () => {
 
     return (
       <div className="space-y-4">
-        {/* Action button */}
-        {/* Owner cannot create sessions - removed button */}
+        {/* Mobile Archive Toggle */}
+        <div className="flex justify-center px-1 mb-4 sm:hidden">
+          <button
+            onClick={() => setShowCompletedSessions(!showCompletedSessions)}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center space-x-2 ${
+              showCompletedSessions 
+                ? 'bg-green-100 text-green-800 border border-green-200' 
+                : 'bg-gray-100 text-gray-600 border border-gray-200'
+            }`}
+          >
+            <CheckCircleIcon className="h-4 w-4" />
+            <span>Archivované tréningy</span>
+          </button>
+        </div>
 
         {/* Training Sessions List - Simple rows for mobile */}
         <div className="space-y-2">
@@ -1028,6 +1086,20 @@ const OwnerCalendar = () => {
 
             {/* Controls */}
             <div className="flex items-center space-x-2">
+              {/* Archive Toggle - Show on larger screens */}
+              <button
+                onClick={() => setShowCompletedSessions(!showCompletedSessions)}
+                className={`hidden sm:flex px-3 py-1.5 text-xs font-medium rounded-md transition-colors items-center space-x-1 ${
+                  showCompletedSessions 
+                    ? 'bg-green-100 text-green-800 border border-green-200' 
+                    : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+                }`}
+                title={showCompletedSessions ? 'Skryť archivované tréningy' : 'Zobraziť archivované tréningy'}
+              >
+                <CheckCircleIcon className="h-3 w-3" />
+                <span>Archivované</span>
+              </button>
+
               {/* View Mode Toggle */}
               <div className="flex bg-gray-100 rounded-lg p-0.5">
                 <button
