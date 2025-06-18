@@ -23,7 +23,7 @@ class SessionController extends Controller
     {
         try {
             $user = $request->user();
-            $query = Session::with(['trainer', 'signups.dog', 'waitlist.dog']);
+            $query = Session::with(['trainer', 'signups.dog.owner', 'waitlist.dog.owner']);
 
             // Filter by user role
             if ($user->isTrainer()) {
