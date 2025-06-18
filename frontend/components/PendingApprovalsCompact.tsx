@@ -97,15 +97,19 @@ export default function PendingApprovalsCompact() {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex items-center space-x-2 mb-3">
-          <ClockIcon className="h-5 w-5 text-amber-600" />
-          <h3 className="font-medium text-gray-900">Čakajúce schválenia</h3>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <ClockIcon className="h-5 w-5 text-amber-600 mr-2" />
+            Čakajúce schválenia
+          </h3>
         </div>
-        <div className="animate-pulse space-y-2">
-          {[...Array(2)].map((_, i) => (
-            <div key={i} className="h-12 bg-gray-200 rounded"></div>
-          ))}
+        <div className="p-6">
+          <div className="animate-pulse space-y-2">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="h-12 bg-gray-200 rounded"></div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -113,70 +117,76 @@ export default function PendingApprovalsCompact() {
 
   if (pendingSignups.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex items-center space-x-2 mb-3">
-          <CheckIcon className="h-5 w-5 text-green-600" />
-          <h3 className="font-medium text-gray-900">Čakajúce schválenia</h3>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <CheckIcon className="h-5 w-5 text-green-600 mr-2" />
+            Čakajúce schválenia
+          </h3>
         </div>
-        <p className="text-sm text-gray-500">Všetko spracované ✓</p>
+        <div className="p-6">
+          <div className="text-center py-8">
+            <CheckIcon className="mx-auto h-12 w-12 text-gray-300" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">Všetko spracované</h3>
+            <p className="mt-1 text-sm text-gray-500">Žiadne čakajúce schválenia.</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center space-x-2">
-          <ClockIcon className="h-5 w-5 text-amber-600" />
-          <h3 className="font-medium text-gray-900">Čakajúce schválenia</h3>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div className="px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <ClockIcon className="h-5 w-5 text-amber-600 mr-2" />
+            Čakajúce schválenia
+          </h3>
+          <span className="bg-amber-100 text-amber-800 text-xs font-medium px-2 py-1 rounded-full">
+            {pendingSignups.length}
+          </span>
         </div>
-        <span className="bg-amber-100 text-amber-800 text-xs font-medium px-2 py-1 rounded-full">
-          {pendingSignups.length}
-        </span>
       </div>
       
-      <div className="space-y-2 max-h-64 overflow-y-auto">
-        {pendingSignups.map((signup) => (
-          <div
-            key={signup.id}
-            className="flex items-center justify-between p-3 bg-amber-50 rounded border border-amber-200 hover:bg-amber-100 transition-colors"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center space-x-2 text-sm">
-                <UserIcon className="h-4 w-4 text-amber-600 flex-shrink-0" />
-                <span className="font-medium text-gray-900 truncate">
-                  {signup.dog?.name}
-                </span>
-                <span className="text-gray-500">•</span>
-                <span className="text-gray-600 truncate">
+      <div className="p-6">
+        <div className="space-y-4 max-h-64 overflow-y-auto">
+          {pendingSignups.map((signup) => (
+            <div
+              key={signup.id}
+              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-gray-900">{signup.dog?.name}</div>
+                <div className="text-sm text-gray-600 mt-1">
                   {signup.dog?.owner?.name}
-                </span>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {signup.session?.title} • {format(new Date(signup.session?.start_time), 'dd.MM HH:mm', { locale: sk })}
+                </div>
               </div>
-              <div className="text-xs text-gray-500 mt-1 truncate">
-                {signup.session?.title} • {format(new Date(signup.session?.start_time), 'dd.MM HH:mm', { locale: sk })}
+              
+              <div className="flex space-x-2 ml-2 flex-shrink-0">
+                <button
+                  onClick={() => handleApprove(signup.session_id, signup.id)}
+                  disabled={approveMutation.isPending}
+                  className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                  title="Schváliť"
+                >
+                  <CheckIcon className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => handleReject(signup.session_id, signup.id)}
+                  disabled={rejectMutation.isPending}
+                  className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                  title="Zamietnuť"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                </button>
               </div>
             </div>
-            
-            <div className="flex space-x-1 ml-2 flex-shrink-0">
-              <button
-                onClick={() => handleApprove(signup.session_id, signup.id)}
-                disabled={approveMutation.isPending}
-                className="p-1.5 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 transition-colors"
-                title="Schváliť"
-              >
-                <CheckIcon className="h-3 w-3" />
-              </button>
-              <button
-                onClick={() => handleReject(signup.session_id, signup.id)}
-                disabled={rejectMutation.isPending}
-                className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 transition-colors"
-                title="Zamietnuť"
-              >
-                <XMarkIcon className="h-3 w-3" />
-              </button>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );

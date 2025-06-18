@@ -174,11 +174,19 @@ export default function TrainerDashboard() {
 
   // Removed pendingBookings as we no longer show pending bookings
 
-  const upcomingSessions = Array.isArray(sessionsList) ? sessionsList.filter((session: any) => {
+  // Get sessions with approved signups for "Najbližší tréning"
+  const approvedSessions = Array.isArray(sessionsList) ? sessionsList.filter((session: any) => {
     try {
-      return session?.start_time && 
-             new Date(session.start_time) > now && 
-             session?.status === 'active';
+      // Check if session is upcoming
+      const isUpcoming = session?.start_time && new Date(session.start_time) > now;
+      if (!isUpcoming) return false;
+      
+      // Check if session has approved signups
+      const hasApprovedSignups = session?.signups && 
+        Array.isArray(session.signups) && 
+        session.signups.some((signup: any) => signup.status === 'approved');
+      
+      return hasApprovedSignups;
     } catch (error) {
       return false;
     }
@@ -241,9 +249,9 @@ export default function TrainerDashboard() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Closest Training */}
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                 <CalendarDaysIcon className="h-5 w-5 text-blue-600 mr-2" />
@@ -251,7 +259,7 @@ export default function TrainerDashboard() {
               </h3>
             </div>
             <div className="p-6">
-              {upcomingSessions.length === 0 ? (
+              {approvedSessions.length === 0 ? (
                 <div className="text-center py-8">
                   <CalendarDaysIcon className="mx-auto h-12 w-12 text-gray-300" />
                   <h3 className="mt-2 text-sm font-medium text-gray-900">Žiadny najbližší tréning</h3>
@@ -259,20 +267,23 @@ export default function TrainerDashboard() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {upcomingSessions.map((session: any) => (
+                  {approvedSessions.map((session: any) => (
                     <div key={session.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                       <div className="flex-1">
-                        <div className="font-medium text-gray-900">{session.name || 'Relácia'}</div>
+                        <div className="font-medium text-gray-900">{session.title || 'Tréning'}</div>
                         <div className="text-sm text-gray-600 mt-1 flex items-center">
                           <ClockIcon className="h-4 w-4 mr-1" />
                           {session.start_time ? format(new Date(session.start_time), 'dd.MM.yyyy HH:mm', { locale: sk }) : 'Čas neurčený'}
                         </div>
+                        {session.location && (
+                          <div className="text-xs text-gray-500 mt-1">📍 {session.location}</div>
+                        )}
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-medium text-gray-900">
-                          {session.current_signups || 0}/{session.capacity || 0}
+                          {session.signups ? session.signups.filter((s: any) => s.status === 'approved').length : 0}/{session.capacity || 0}
                         </div>
-                        <div className="text-xs text-gray-500">účastníkov</div>
+                        <div className="text-xs text-gray-500">schválených</div>
                       </div>
                     </div>
                   ))}
@@ -282,7 +293,7 @@ export default function TrainerDashboard() {
           </div>
 
           {/* Pending Approvals - Compact */}
-          <div className="lg:col-span-1">
+          <div>
             <PendingApprovalsCompact />
           </div>
         </div>
