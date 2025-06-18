@@ -16,7 +16,11 @@ import { sk } from 'date-fns/locale';
 import ClientRequestsManagement from './ClientRequestsManagement';
 import PendingApprovalsCompact from './PendingApprovalsCompact';
 
-export default function TrainerDashboard() {
+interface TrainerDashboardProps {
+  setActiveSection?: (section: string) => void;
+}
+
+export default function TrainerDashboard({ setActiveSection }: TrainerDashboardProps = {}) {
   const { token, user } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -329,10 +333,23 @@ export default function TrainerDashboard() {
           {/* Closest Training - Enhanced */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <CalendarDaysIcon className="h-5 w-5 text-blue-600 mr-2" />
-                Najbližší tréning
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <CalendarDaysIcon className="h-5 w-5 text-blue-600 mr-2" />
+                  Najbližší tréning
+                </h3>
+                {approvedSessions.length > 3 && setActiveSection && (
+                  <button
+                    onClick={() => setActiveSection('sessions')}
+                    className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center transition-colors"
+                  >
+                    Zobraziť všetky
+                    <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
             <div className="p-6">
               {approvedSessions.length === 0 ? (
@@ -342,8 +359,8 @@ export default function TrainerDashboard() {
                   <p className="mt-1 text-sm text-gray-500">Vytvorte nové tréningy pre vašich klientov.</p>
                 </div>
               ) : (
-                <div className="space-y-4 max-h-80 overflow-y-auto">
-                  {approvedSessions.map((session: any) => (
+                <div className="space-y-4">
+                  {approvedSessions.slice(0, 3).map((session: any) => (
                     <div 
                       key={session.id} 
                       className={`p-4 rounded-lg transition-all duration-300 ${

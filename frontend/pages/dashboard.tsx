@@ -399,7 +399,7 @@ export default function Dashboard() {
             {activeSection === 'overview' && (
               <>
                 {user.role === 'trainer' ? (
-                  <TrainerDashboard />
+                  <TrainerDashboard setActiveSection={setActiveSection} />
                 ) : (
                                       <div className="space-y-6">
                       <div>
