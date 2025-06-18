@@ -9,6 +9,7 @@ import TrainerCalendar from '../components/TrainerCalendar';
 import DogsList from '../components/DogsList';
 
 import OwnerOnboardingFlow from '../components/OwnerOnboardingFlow';
+import ServicesManagement from '../components/ServicesManagement';
 import { dogApi } from '../lib/api';
 import { 
   FaDog, 
@@ -485,21 +486,8 @@ export default function Dashboard() {
             {/* Trainer Services - Management View */}
             {activeSection === 'services' && user.role === 'trainer' && (
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">Služby</h2>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="text-center py-6">
-                    <FaCogs className="mx-auto text-4xl text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Správa služieb</h3>
-                    <p className="text-gray-600 mb-6 text-sm">Spravujte svoje tréningové služby a šablóny.</p>
-                    <button
-                      onClick={() => alert('Správa služieb bude čoskoro dostupná!')}
-                      className="bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white px-6 py-2.5 rounded-lg flex items-center mx-auto transition-colors text-sm font-medium"
-                    >
-                      <FaPlus className="mr-2 text-sm" />
-                      Pridať službu
-                    </button>
-                  </div>
-                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Správa služieb</h2>
+                <ServicesManagement />
               </div>
             )}
 
