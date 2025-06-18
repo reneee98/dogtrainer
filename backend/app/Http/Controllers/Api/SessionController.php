@@ -310,7 +310,7 @@ class SessionController extends Controller
         if (!$user->isTrainer()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Only trainers can delete sessions',
+                'message' => 'Iba tréneri môžu mazať treningy',
             ], 403);
         }
 
@@ -320,35 +320,30 @@ class SessionController extends Controller
             if (!$session) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Session not found',
+                    'message' => 'Tréning nebol nájdený',
                 ], 404);
             }
 
             if ($session->trainer_id !== $user->id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'You can only delete your own sessions',
+                    'message' => 'Môžete mazať len svoje vlastné treningy',
                 ], 403);
             }
 
-            if ($session->signups()->approved()->exists()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot delete session with approved signups',
-                ], 422);
-            }
+
 
             $session->delete();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Session deleted successfully',
+                'message' => 'Tréning bol úspešne zmazaný',
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete session',
+                'message' => 'Chyba pri mazaní tréningu',
                 'error' => $e->getMessage(),
             ], 500);
         }

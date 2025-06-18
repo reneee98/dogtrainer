@@ -181,18 +181,33 @@ export default function PendingApprovalsCompact() {
   };
 
   const handleDeleteSession = async (sessionId: string) => {
-    if (!window.confirm('Ste si istí, že chcete zmazać tento tréning?')) {
+    // Check if session has approved signups first
+    const session = selectedSession;
+    const hasApprovedSignups = session?.signups?.some((signup: any) => signup.status === 'approved');
+    
+    if (hasApprovedSignups) {
+      alert('Nemôžete zmazať tréning so schválenými účastníkmi. Najprv zrušte všetky schválené prihlášky kliknutím na "Zamietnuť" pri každom schválenom účastníkovi, potom môžete tréning zmazať.');
+      return;
+    }
+
+    if (!window.confirm('Ste si istí, že chcete zmazať tento tréning?')) {
       return;
     }
 
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/sessions/${sessionId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/sessions/${sessionId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Chyba pri mazaní tréningu');
+      }
       
       setShowSessionModal(false);
       setSelectedSession(null);
@@ -202,7 +217,11 @@ export default function PendingApprovalsCompact() {
       alert('Tréning bol úspešne zmazaný');
     } catch (error) {
       console.error('Error deleting session:', error);
-      alert('Chyba pri mazaní tréningu');
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert('Chyba pri mazaní tréningu');
+      }
     }
   };
 
