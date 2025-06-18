@@ -250,7 +250,25 @@ const OwnerCalendar = () => {
     }
   };
 
-  const getSessionTypeColor = (type: string) => {
+  const getSessionColor = (session: Session) => {
+    if (session.status === 'cancelled') return 'bg-red-500';
+    if (session.status === 'completed') return 'bg-gray-400';
+    
+    // Fallback to type-based colors (since owner doesn't have service templates)
+    switch (session.session_type) {
+      case 'individual':
+        return 'bg-blue-500';
+      case 'group':
+        return 'bg-green-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  const getSessionTypeColor = (type: string, status?: string) => {
+    if (status === 'cancelled') return 'bg-red-500';
+    if (status === 'completed') return 'bg-gray-400';
+    
     switch (type) {
       case 'individual':
         return 'bg-blue-500';
@@ -402,7 +420,7 @@ const OwnerCalendar = () => {
             <div className="sm:hidden">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className={`w-3 h-3 rounded-full ${getSessionTypeColor(session.session_type)} flex-shrink-0`}></div>
+                  <div className={`w-3 h-3 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
                   <div>
                     <div className="font-medium text-gray-900 text-sm">
                       {formatTime(session.start_time)} - {session.title}
@@ -413,7 +431,6 @@ const OwnerCalendar = () => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-semibold text-gray-900">{session.price}€</div>
                   {isUserSignedUp(session) ? (
                     <div className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
                       Prihlásený
@@ -437,7 +454,7 @@ const OwnerCalendar = () => {
                 {/* Main row with all key info */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4 flex-1">
-                    <div className={`w-3 h-3 rounded-full ${getSessionTypeColor(session.session_type)} flex-shrink-0`}></div>
+                    <div className={`w-3 h-3 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
                     <div className="flex-1">
                       <div className="font-medium text-gray-900">
                         {formatTime(session.start_time)} - {formatTime(session.end_time)} • {session.title}
@@ -461,9 +478,6 @@ const OwnerCalendar = () => {
                         Dostupný
                       </div>
                     )}
-                    <div className="text-lg font-semibold text-gray-900">
-                      {session.price}€
-                    </div>
                   </div>
                 </div>
 
@@ -681,13 +695,8 @@ const OwnerCalendar = () => {
               <button
                 key={index}
                 onClick={() => {
-                  // Only set selected date on mobile when there are sessions
-                  if (window.innerWidth < 640 && daySessions.length > 0) {
-                    setSelectedDate(date);
-                  } else if (window.innerWidth >= 640 && daySessions.length > 0) {
-                    // On desktop, show modal for first session
-                    handleSessionClick(daySessions[0]);
-                  }
+                  if (!isCurrentMonthDay) return;
+                  setSelectedDate(date);
                 }}
                 className={`
                   h-12 sm:h-16 lg:h-20 relative flex flex-col items-center justify-center
@@ -696,9 +705,9 @@ const OwnerCalendar = () => {
                   ${!isCurrentMonthDay ? 'opacity-30' : ''}
                   ${isTodayDay ? 'bg-blue-50' : ''}
                   ${isSelected ? 'bg-blue-100 ring-2 ring-blue-500 ring-inset' : ''}
-                  ${daySessions.length > 0 ? 'cursor-pointer' : 'cursor-default'}
+                  cursor-pointer
                 `}
-                disabled={!isCurrentMonthDay || daySessions.length === 0}
+                disabled={!isCurrentMonthDay}
               >
                 {/* Date number */}
                 <div className={`
@@ -713,8 +722,7 @@ const OwnerCalendar = () => {
                 {daySessions.length > 0 && (
                   <div className="flex items-center justify-center space-x-0.5 absolute bottom-1 sm:bottom-2">
                     {daySessions.slice(0, 4).map((session, idx) => {
-                      const color = session.session_type === 'individual' ? 'bg-blue-500' : 
-                                   session.session_type === 'group' ? 'bg-green-500' : 'bg-purple-500';
+                      const color = getSessionColor(session);
                       
                       return daySessions.length === 1 ? (
                         // Single session - line
@@ -755,13 +763,17 @@ const OwnerCalendar = () => {
           })}
         </div>
 
-        {/* Mobile: Selected date sessions list */}
-        {selectedDate && selectedDateSessions.length > 0 && (
-          <div className="sm:hidden">
+        {/* Selected date sessions list (always visible if selectedDate) */}
+        {selectedDate && (
+          <div className="bg-white border-t border-gray-100">
             <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium text-gray-900">
-                  {formatDate(selectedDate.toISOString())}
+                  {selectedDate.toLocaleDateString('sk-SK', { 
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long'
+                  })}
                 </h3>
                 <button
                   onClick={() => setSelectedDate(null)}
@@ -771,45 +783,117 @@ const OwnerCalendar = () => {
                 </button>
               </div>
             </div>
-            <div className="space-y-3 p-4">
-              {selectedDateSessions.map((session) => (
-                <div
-                  key={session.id}
-                  onClick={() => handleSessionClick(session)}
-                  className="bg-gray-50 rounded-lg p-3 cursor-pointer hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-3 h-3 rounded-full ${getSessionTypeColor(session.session_type)} flex-shrink-0`}></div>
-                      <div>
-                        <div className="font-medium text-gray-900 text-sm">
-                          {formatTime(session.start_time)} - {session.title}
+
+            {/* Sessions list */}
+            {selectedDateSessions.length > 0 ? (
+              <div className="px-4 pb-4 space-y-3">
+                {selectedDateSessions.map((session) => (
+                  <div
+                    key={session.id}
+                    onClick={() => handleSessionClick(session)}
+                    className="bg-gray-50 rounded-lg p-3 cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200"
+                  >
+                    {/* Mobile: Simple row layout */}
+                    <div className="sm:hidden">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-3 h-3 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
+                          <div>
+                            <div className="font-medium text-gray-900 text-sm">
+                              {formatTime(session.start_time)} - {session.title}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {session.location} • {session.signups?.length || 0}/{session.capacity}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {session.location} • {session.signups?.length || 0}/{session.capacity}
+                        <div className="text-right">
+                          {isUserSignedUp(session) ? (
+                            <div className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                              Prihlásený
+                            </div>
+                          ) : isSessionFull(session) ? (
+                            <div className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                              Plný
+                            </div>
+                          ) : (
+                            <div className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                              Dostupný
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-semibold text-gray-900">{session.price}€</div>
-                      {isUserSignedUp(session) ? (
-                        <div className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                          Prihlásený
+
+                    {/* Desktop: Enhanced row layout */}
+                    <div className="hidden sm:block">
+                      <div className="space-y-2">
+                        {/* Main row with all key info */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4 flex-1">
+                            <div className={`w-3 h-3 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">
+                                {formatTime(session.start_time)} - {formatTime(session.end_time)} • {session.title}
+                              </div>
+                              <div className="text-sm text-gray-500 mt-0.5">
+                                {session.location} • {session.trainer.name} • {session.signups?.length || 0}/{session.capacity} účastníkov
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            {isUserSignedUp(session) ? (
+                              <div className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
+                                Prihlásený
+                              </div>
+                            ) : isSessionFull(session) ? (
+                              <div className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700">
+                                Plný
+                              </div>
+                            ) : (
+                              <div className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                                Dostupný
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      ) : isSessionFull(session) ? (
-                        <div className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
-                          Plný
+
+                        {/* Progress bar and additional details */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4 flex-1">
+                            {session.capacity > 0 && (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs text-gray-500">Obsadenosť:</span>
+                                <div className="w-24 bg-gray-200 rounded-full h-2">
+                                  <div 
+                                    className="h-2 rounded-full bg-blue-500"
+                                    style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-xs text-gray-500">
+                                  {Math.round(((session.signups?.length || 0) / session.capacity) * 100)}%
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Session Type */}
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-gray-500 uppercase tracking-wide">
+                              {getSessionTypeLabel(session.session_type)}
+                            </span>
+                          </div>
                         </div>
-                      ) : (
-                        <div className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                          Dostupný
-                        </div>
-                      )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-4 py-8 text-center text-gray-500">
+                Žiadne tréningy v tento deň
+              </div>
+            )}
           </div>
         )}
 
