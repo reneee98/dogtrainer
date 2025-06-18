@@ -9,16 +9,19 @@ import { sk } from 'date-fns/locale';
 import WaitlistButton from './WaitlistButton';
 
 interface Session {
-  id: number;
-  name: string;
+  id: string;
+  title: string;
   description?: string;
-  type: 'group_training' | 'daycare';
+  session_type: 'individual' | 'group' | 'daycare';
   start_time: string;
   end_time: string;
   capacity: number;
-  current_signups: number;
+  current_signups?: number;
+  available_spots?: number;
   status: string;
   price: number;
+  signups?: any[];
+  waitlist?: any[];
 }
 
 interface SessionDetailModalProps {
@@ -33,11 +36,12 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: sessionDetails } = useQuery({
-    queryKey: ['session', session.id],
-    queryFn: () => sessionApi.show(token!, session.id),
-    enabled: !!token,
-  });
+  // We don't need to fetch session details as we already have all needed info from the session prop
+  // const { data: sessionDetails } = useQuery({
+  //   queryKey: ['session', session.id],
+  //   queryFn: () => sessionApi.show(token!, parseInt(session.id)),
+  //   enabled: !!token,
+  // });
 
   const { data: dogsResponse } = useQuery({
     queryKey: ['dogs'],
@@ -55,14 +59,17 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
 
     setLoading(true);
     try {
-      await sessionApi.signup(token!, session.id, selectedDogId!);
+      console.log('Signing up dog:', { sessionId: session.id, dogId: selectedDogId });
+      await sessionApi.signup(token!, parseInt(session.id), selectedDogId!);
       toast.success('Pes bol úspešne prihlásený na reláciu');
       queryClient.invalidateQueries({ queryKey: ['session', session.id] });
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
       setShowSignupForm(false);
       setSelectedDogId(null);
-    } catch (error) {
-      toast.error('Chyba pri prihlasovaní psa');
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      const errorMessage = error?.message || 'Chyba pri prihlasovaní psa';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -70,15 +77,34 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
 
   const isOwner = user?.role === 'owner';
   const isTrainer = user?.role === 'trainer';
-  const isFull = session.current_signups >= session.capacity;
-  const canSignup = isOwner && session.status === 'active' && !isFull;
+  // Calculate current signups from session data
+  const calculateCurrentSignups = () => {
+    if (session.signups) {
+      return session.signups.filter((signup: any) => signup.status === 'approved').length;
+    }
+    return session.current_signups ?? 0;
+  };
+  
+  const currentSignups = calculateCurrentSignups();
+  const isFull = currentSignups >= session.capacity;
+  const canSignup = isOwner && session.status === 'scheduled' && !isFull;
+
+  // Debug logging
+  console.log('SessionDetailModal Debug:', {
+    isOwner,
+    sessionStatus: session.status,
+    isFull,
+    currentSignups,
+    capacity: session.capacity,
+    canSignup
+  });
 
   return (
     <div className="modal-overlay">
       <div className="modal-content max-w-2xl">
         <div className="flex justify-between items-center p-6 border-b">
           <h3 className="text-lg font-medium text-gray-900">
-            Detail relácie: {session.name}
+            Detail relácie: {session.title}
           </h3>
           <button
             onClick={onClose}
@@ -95,7 +121,8 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
               <div>
                 <span className="font-medium text-gray-700">Typ:</span>
                 <div className="text-gray-900">
-                  {session.type === 'group_training' ? 'Skupinový tréning' : 'Jasle'}
+                  {session.session_type === 'group' ? 'Skupinový tréning' : 
+                   session.session_type === 'individual' ? 'Individuálny tréning' : 'Jasle'}
                 </div>
               </div>
               <div>
@@ -118,7 +145,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                 <span className="font-medium text-gray-700">Kapacita:</span>
                 <div className="text-gray-900">
                   <span className={isFull ? 'text-red-600' : 'text-green-600'}>
-                    {session.current_signups}/{session.capacity}
+                    {currentSignups}/{session.capacity}
                   </span>
                 </div>
               </div>
@@ -133,7 +160,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
           </div>
 
           {/* Owner Actions */}
-          {isOwner && session.status === 'active' && (
+          {isOwner && session.status === 'scheduled' && (
             <div className="border-t pt-4">
               <h4 className="font-medium text-gray-900 mb-3">Prihlásiť psa</h4>
               
@@ -190,7 +217,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                   {isFull ? (
                     <div>
                       <p className="text-gray-600 mb-3">Relácia je naplnená</p>
-                      <WaitlistButton sessionId={session.id} />
+                      <WaitlistButton sessionId={parseInt(session.id)} />
                     </div>
                   ) : (
                     <p className="text-gray-600">Prihlasovanie nie je možné</p>
@@ -201,17 +228,17 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
           )}
 
           {/* Participants List (for trainers) */}
-          {isTrainer && sessionDetails?.signups && (
+          {isTrainer && session.signups && (
             <div className="border-t pt-4">
               <h4 className="font-medium text-gray-900 mb-3">
-                Prihlásení účastníci ({sessionDetails.signups.length})
+                Prihlásení účastníci ({session.signups.length})
               </h4>
               
-              {sessionDetails.signups.length === 0 ? (
+              {session.signups.length === 0 ? (
                 <p className="text-gray-500">Zatiaľ nie sú prihlásení žiadni účastníci</p>
               ) : (
                 <div className="space-y-2">
-                  {sessionDetails.signups.map((signup: any) => (
+                  {session.signups.map((signup: any) => (
                     <div key={signup.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
                         <div className="font-medium text-gray-900">{signup.dog.name}</div>
@@ -234,13 +261,13 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                 </div>
               )}
 
-              {sessionDetails.waitlist && sessionDetails.waitlist.length > 0 && (
+              {session.waitlist && session.waitlist.length > 0 && (
                 <div className="mt-4">
                   <h5 className="font-medium text-gray-900 mb-2">
-                    Čakacia listina ({sessionDetails.waitlist.length})
+                    Čakacia listina ({session.waitlist.length})
                   </h5>
                   <div className="space-y-2">
-                    {sessionDetails.waitlist.map((waitlist: any) => (
+                    {session.waitlist.map((waitlist: any) => (
                       <div key={waitlist.id} className="flex items-center justify-between p-2 bg-yellow-50 rounded">
                         <div>
                           <span className="font-medium">{waitlist.dog.name}</span>
