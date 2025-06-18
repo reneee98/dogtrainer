@@ -153,16 +153,17 @@ const OwnerCalendar = () => {
 
   // Create adapter for SessionDetailModal
   const createSessionAdapter = (session: Session) => ({
-    id: parseInt(session.id),
-    name: session.title,
+    id: session.id,
+    title: session.title,
     description: session.description,
-    type: session.session_type === 'individual' || session.session_type === 'group' ? 'group_training' as const : 'daycare' as const,
+    session_type: session.session_type,
     start_time: session.start_time,
     end_time: session.end_time,
     capacity: session.capacity,
     current_signups: getApprovedSignupsCount(session),
-    status: session.status === 'scheduled' ? 'active' : session.status,
-    price: session.price
+    status: session.status,
+    price: session.price,
+    signups: session.signups
   });
 
   // Owner booking functionality will be added here later

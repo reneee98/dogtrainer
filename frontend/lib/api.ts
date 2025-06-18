@@ -112,15 +112,15 @@ export const sessionApi = {
   update: (token: string, id: number, data: any) => apiRequest(`/sessions/${id}`, { token, method: 'PUT', body: data }),
   delete: (token: string, id: number) => apiRequest(`/sessions/${id}`, { token, method: 'DELETE' }),
   show: (token: string, id: number) => apiRequest(`/sessions/${id}`, { token }),
-  signup: (token: string, sessionId: number, dogId: string) => 
+  signup: (token: string, sessionId: string | number, dogId: string) => 
     apiRequest(`/sessions/${sessionId}/signup`, { token, method: 'POST', body: { dog_id: dogId } }),
-  joinWaitlist: (token: string, sessionId: number, dogId: string) =>
+  joinWaitlist: (token: string, sessionId: string | number, dogId: string) =>
     apiRequest(`/sessions/${sessionId}/waitlist`, { token, method: 'POST', body: { dog_id: dogId } }),
-  getSignups: (token: string, sessionId: number) => 
+  getSignups: (token: string, sessionId: string | number) => 
     apiRequest(`/sessions/${sessionId}/signups`, { token }),
-  approveSignup: (token: string, sessionId: number, signupId: string) =>
+  approveSignup: (token: string, sessionId: string | number, signupId: string) =>
     apiRequest(`/sessions/${sessionId}/signups/${signupId}/approve`, { token, method: 'POST' }),
-  rejectSignup: (token: string, sessionId: number, signupId: string, reason?: string) =>
+  rejectSignup: (token: string, sessionId: string | number, signupId: string, reason?: string) =>
     apiRequest(`/sessions/${sessionId}/signups/${signupId}/reject`, { token, method: 'POST', body: { rejection_reason: reason } }),
 };
 

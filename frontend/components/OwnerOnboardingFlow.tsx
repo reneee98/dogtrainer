@@ -170,7 +170,7 @@ export default function OwnerOnboardingFlow({ onComplete, onClose }: OwnerOnboar
 
     setLoading(true);
     try {
-      const response = await sessionApi.signup(token!, parseInt(session.id), createdDog.id.toString());
+              const response = await sessionApi.signup(token!, session.id, createdDog.id.toString());
       if (response.success) {
         setSelectedSession(session);
         setCompletedSteps(prev => [...prev, 'training-signup']);

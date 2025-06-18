@@ -36,13 +36,6 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
 
-  // We don't need to fetch session details as we already have all needed info from the session prop
-  // const { data: sessionDetails } = useQuery({
-  //   queryKey: ['session', session.id],
-  //   queryFn: () => sessionApi.show(token!, parseInt(session.id)),
-  //   enabled: !!token,
-  // });
-
   const { data: dogsResponse } = useQuery({
     queryKey: ['dogs'],
     queryFn: () => dogApi.list(token!),
@@ -60,15 +53,15 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
     setLoading(true);
     try {
       console.log('Signing up dog:', { sessionId: session.id, dogId: selectedDogId });
-      await sessionApi.signup(token!, parseInt(session.id), selectedDogId!);
-      toast.success('Pes bol úspešne prihlásený na reláciu');
+      await sessionApi.signup(token!, session.id, selectedDogId!);
+      toast.success('Pes bol úspešne prihlásený na reláciu - čaká na schválenie trénera');
       queryClient.invalidateQueries({ queryKey: ['session', session.id] });
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
       setShowSignupForm(false);
       setSelectedDogId(null);
     } catch (error: any) {
       console.error('Signup error:', error);
-      const errorMessage = error?.message || 'Chyba pri prihlasovaní psa';
+      const errorMessage = error?.response?.data?.message || error?.message || 'Chyba pri prihlasovaní psa';
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -77,26 +70,26 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
 
   const isOwner = user?.role === 'owner';
   const isTrainer = user?.role === 'trainer';
-  // Calculate current signups from session data
-  const calculateCurrentSignups = () => {
-    if (session.signups) {
-      return session.signups.filter((signup: any) => signup.status === 'approved').length;
-    }
-    return session.current_signups ?? 0;
-  };
   
-  const currentSignups = calculateCurrentSignups();
+  // Calculate current signups from session data
+  const currentSignups = session.signups?.filter((signup: any) => signup.status === 'approved').length || 0;
   const isFull = currentSignups >= session.capacity;
-  const canSignup = isOwner && session.status === 'scheduled' && !isFull;
+  const canSignup = isOwner && (session.status === 'scheduled' || session.status === 'active') && !isFull;
 
-  // Debug logging
+  // Enhanced debug logging
   console.log('SessionDetailModal Debug:', {
+    user: user,
     isOwner,
+    isTrainer,
     sessionStatus: session.status,
+    sessionId: session.id,
+    sessionTitle: session.title,
     isFull,
     currentSignups,
     capacity: session.capacity,
-    canSignup
+    canSignup,
+    dogs: dogs,
+    dogsLength: dogs.length
   });
 
   return (
@@ -159,8 +152,10 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
             )}
           </div>
 
-          {/* Owner Actions */}
-          {isOwner && session.status === 'scheduled' && (
+
+
+          {/* Owner Actions - ALWAYS SHOW FOR OWNERS */}
+          {isOwner && (
             <div className="border-t pt-4">
               <h4 className="font-medium text-gray-900 mb-3">Prihlásiť psa</h4>
               
@@ -169,7 +164,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                   {!showSignupForm ? (
                     <button
                       onClick={() => setShowSignupForm(true)}
-                      className="btn btn-primary flex items-center"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
                     >
                       <PlusIcon className="h-4 w-4 mr-2" />
                       Prihlásiť psa na reláciu
@@ -177,11 +172,11 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                   ) : (
                     <div className="bg-blue-50 rounded-lg p-4">
                       <div className="mb-3">
-                        <label className="form-label">Vyberte psa</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Vyberte psa</label>
                         <select
                           value={selectedDogId || ''}
                           onChange={(e) => setSelectedDogId(e.target.value)}
-                          className="form-input"
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md"
                         >
                           <option value="">Vyberte psa</option>
                           {dogs.map((dog: any) => (
@@ -195,7 +190,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                         <button
                           onClick={handleSignup}
                           disabled={loading || !selectedDogId}
-                          className="btn btn-primary disabled:opacity-50"
+                          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
                         >
                           {loading ? 'Prihlasovanie...' : 'Prihlásiť'}
                         </button>
@@ -204,7 +199,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                             setShowSignupForm(false);
                             setSelectedDogId(null);
                           }}
-                          className="btn btn-outline"
+                          className="border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50"
                         >
                           Zrušiť
                         </button>
@@ -217,10 +212,13 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                   {isFull ? (
                     <div>
                       <p className="text-gray-600 mb-3">Relácia je naplnená</p>
-                      <WaitlistButton sessionId={parseInt(session.id)} />
+                      <WaitlistButton sessionId={session.id} />
                     </div>
                   ) : (
-                    <p className="text-gray-600">Prihlasovanie nie je možné</p>
+                    <div>
+                      <p className="text-gray-600 mb-2">Prihlasovanie nie je možné</p>
+                      <p className="text-sm text-gray-500">Status: {session.status}</p>
+                    </div>
                   )}
                 </div>
               )}
@@ -285,12 +283,6 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
               )}
             </div>
           )}
-        </div>
-
-        <div className="flex justify-end p-6 border-t">
-          <button onClick={onClose} className="btn btn-outline">
-            Zavrieť
-          </button>
         </div>
       </div>
     </div>

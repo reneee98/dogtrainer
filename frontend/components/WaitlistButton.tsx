@@ -5,7 +5,7 @@ import { sessionApi, dogApi } from '../lib/api';
 import { toast } from 'react-toastify';
 
 interface WaitlistButtonProps {
-  sessionId: number;
+  sessionId: string | number;
 }
 
 export default function WaitlistButton({ sessionId }: WaitlistButtonProps) {
@@ -14,11 +14,13 @@ export default function WaitlistButton({ sessionId }: WaitlistButtonProps) {
   const [selectedDogId, setSelectedDogId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const { data: dogs } = useQuery({
+  const { data: dogsResponse } = useQuery({
     queryKey: ['dogs'],
     queryFn: () => dogApi.list(token!),
     enabled: !!token && user?.role === 'owner',
   });
+
+  const dogs = dogsResponse?.data?.dogs || [];
 
   const handleJoinWaitlist = async () => {
     if (!selectedDogId) {
@@ -48,21 +50,21 @@ export default function WaitlistButton({ sessionId }: WaitlistButtonProps) {
       {!showDogSelect ? (
         <button
           onClick={() => setShowDogSelect(true)}
-          className="btn btn-outline"
+          className="border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50"
         >
           Pridať na čakaciu listinu
         </button>
       ) : (
         <div className="bg-yellow-50 rounded-lg p-4 mt-3">
           <div className="mb-3">
-            <label className="form-label">Vyberte psa</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Vyberte psa</label>
             <select
               value={selectedDogId || ''}
               onChange={(e) => setSelectedDogId(e.target.value)}
-              className="form-input"
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md"
             >
               <option value="">Vyberte psa</option>
-              {dogs?.map((dog: any) => (
+              {dogs.map((dog: any) => (
                 <option key={dog.id} value={dog.id}>
                   {dog.name} ({dog.breed})
                 </option>
@@ -73,7 +75,7 @@ export default function WaitlistButton({ sessionId }: WaitlistButtonProps) {
             <button
               onClick={handleJoinWaitlist}
               disabled={loading || !selectedDogId}
-              className="btn btn-primary disabled:opacity-50"
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
             >
               {loading ? 'Pridávam...' : 'Pridať na waitlist'}
             </button>
@@ -82,7 +84,7 @@ export default function WaitlistButton({ sessionId }: WaitlistButtonProps) {
                 setShowDogSelect(false);
                 setSelectedDogId(null);
               }}
-              className="btn btn-outline"
+              className="border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50"
             >
               Zrušiť
             </button>
