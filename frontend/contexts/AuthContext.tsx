@@ -15,7 +15,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, role: 'owner' | 'trainer', trainerId?: string | null, requestMessage?: string) => Promise<void>;
+  register: (name: string, email: string, password: string, role: 'owner' | 'trainer') => Promise<void>;
   requestTrainerRelationship: (trainerId: string, requestMessage?: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const register = async (name: string, email: string, password: string, role: 'owner' | 'trainer', trainerId?: string | null, requestMessage?: string) => {
+  const register = async (name: string, email: string, password: string, role: 'owner' | 'trainer') => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`, {
         method: 'POST',
@@ -124,19 +124,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Set up api token for subsequent requests
       api.defaults.headers.common['Authorization'] = `Bearer ${data.data.token}`;
       
-      // If owner selected a trainer, request relationship
-      if (role === 'owner' && trainerId) {
-        try {
-          await requestTrainerRelationship(trainerId, requestMessage);
-          toast.success('Registrácia úspešná! Žiadosť o trénera bola odoslaná.');
-        } catch (trainerError) {
-          console.error('Failed to request trainer relationship:', trainerError);
-          toast.warning('Registrácia úspešná, ale žiadosť o trénera sa nepodarilo odoslať.');
-        }
-      } else {
-        toast.success('Registrácia úspešná!');
-      }
-      
+      toast.success('Registrácia úspešná!');
       router.push('/dashboard');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Chyba pri registrácii');

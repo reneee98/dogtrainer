@@ -29,7 +29,7 @@ interface SessionDetailModalProps {
 export default function SessionDetailModal({ session, onClose }: SessionDetailModalProps) {
   const { token, user } = useAuth();
   const [showSignupForm, setShowSignupForm] = useState(false);
-  const [selectedDogId, setSelectedDogId] = useState<number | null>(null);
+  const [selectedDogId, setSelectedDogId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
 
@@ -53,7 +53,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
 
     setLoading(true);
     try {
-      await sessionApi.signup(token!, session.id, selectedDogId);
+      await sessionApi.signup(token!, session.id, selectedDogId!);
       toast.success('Pes bol úspešne prihlásený na reláciu');
       queryClient.invalidateQueries({ queryKey: ['session', session.id] });
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
@@ -151,7 +151,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                         <label className="form-label">Vyberte psa</label>
                         <select
                           value={selectedDogId || ''}
-                          onChange={(e) => setSelectedDogId(Number(e.target.value))}
+                          onChange={(e) => setSelectedDogId(e.target.value)}
                           className="form-input"
                         >
                           <option value="">Vyberte psa</option>

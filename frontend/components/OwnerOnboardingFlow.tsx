@@ -92,7 +92,7 @@ export default function OwnerOnboardingFlow({ onComplete, onClose }: OwnerOnboar
   useEffect(() => {
     const loadTrainers = async () => {
       try {
-        const response = await apiRequest('/public/trainers', { token });
+        const response = await apiRequest('/public/trainers', { token: token || undefined });
         const trainersData = response.data?.data || response.data || [];
         setTrainers(Array.isArray(trainersData) ? trainersData : []);
       } catch (error) {
@@ -116,7 +116,7 @@ export default function OwnerOnboardingFlow({ onComplete, onClose }: OwnerOnboar
     
     try {
       setLoading(true);
-      const response = await apiRequest('/sessions', { token });
+      const response = await apiRequest('/sessions', { token: token || undefined });
       
       // Filter sessions by selected trainer and future dates
       const now = new Date();
@@ -170,7 +170,7 @@ export default function OwnerOnboardingFlow({ onComplete, onClose }: OwnerOnboar
 
     setLoading(true);
     try {
-      const response = await sessionApi.signup(token!, parseInt(session.id), createdDog.id);
+      const response = await sessionApi.signup(token!, parseInt(session.id), createdDog.id.toString());
       if (response.success) {
         setSelectedSession(session);
         setCompletedSteps(prev => [...prev, 'training-signup']);

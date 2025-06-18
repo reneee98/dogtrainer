@@ -11,7 +11,7 @@ interface WaitlistButtonProps {
 export default function WaitlistButton({ sessionId }: WaitlistButtonProps) {
   const { token, user } = useAuth();
   const [showDogSelect, setShowDogSelect] = useState(false);
-  const [selectedDogId, setSelectedDogId] = useState<number | null>(null);
+  const [selectedDogId, setSelectedDogId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const { data: dogs } = useQuery({
@@ -58,7 +58,7 @@ export default function WaitlistButton({ sessionId }: WaitlistButtonProps) {
             <label className="form-label">Vyberte psa</label>
             <select
               value={selectedDogId || ''}
-              onChange={(e) => setSelectedDogId(Number(e.target.value))}
+              onChange={(e) => setSelectedDogId(e.target.value)}
               className="form-input"
             >
               <option value="">Vyberte psa</option>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { apiRequest, serviceTemplateApi } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, CalendarIcon, ListBulletIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import SessionDetailModal from './SessionDetailModal';
 // Owner doesn't need SessionForm - removed import
 
 interface Session {
@@ -143,6 +144,20 @@ const OwnerCalendar = () => {
     setSelectedSession(session);
     setShowSessionModal(true);
   };
+
+  // Create adapter for SessionDetailModal
+  const createSessionAdapter = (session: Session) => ({
+    id: parseInt(session.id),
+    name: session.title,
+    description: session.description,
+    type: session.session_type === 'individual' || session.session_type === 'group' ? 'group_training' as const : 'daycare' as const,
+    start_time: session.start_time,
+    end_time: session.end_time,
+    capacity: session.capacity,
+    current_signups: session.signups?.length || 0,
+    status: session.status === 'scheduled' ? 'active' : session.status,
+    price: session.price
+  });
 
   // Owner booking functionality will be added here later
 
@@ -1169,135 +1184,17 @@ const OwnerCalendar = () => {
         </div>
       </div>
 
-      {/* Mobile-Optimized Session Modal */}
-      {showSessionModal && selectedSession && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg sm:w-full max-h-[90vh] sm:max-h-[90vh] overflow-hidden">
-            {/* Mobile handle bar */}
-            <div className="flex justify-center py-3 sm:hidden">
-              <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
-            </div>
-
-            <div className="overflow-y-auto max-h-[85vh] sm:max-h-[80vh]">
-              <div className="p-4 sm:p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <div className={`w-3 h-3 rounded-full ${getSessionColor(selectedSession)}`}></div>
-                      <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">
-                        {getSessionLabel(selectedSession)}
-                      </h3>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className={`
-                        inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
-                        ${isSessionCompleted(selectedSession) ? 'bg-green-100 text-green-800' :
-                          selectedSession.status === 'scheduled' ? 'bg-green-100 text-green-800' :
-                          selectedSession.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'}
-                      `}>
-                        {getDisplayStatus(selectedSession)}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowSessionModal(false)}
-                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"
-                  >
-                    <XMarkIcon className="h-6 w-6" />
-                  </button>
-                </div>
-
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="text-lg font-medium text-gray-900 mb-4">Detaily tréningy</h4>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600">Služba</span>
-                        <span className="font-medium text-gray-900">
-                          {getSessionLabel(selectedSession)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600">Dátum</span>
-                        <span className="font-medium text-gray-900">
-                          {formatRelativeDate(selectedSession.start_time)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600">Čas</span>
-                        <span className="font-medium text-gray-900">
-                          {formatTime(selectedSession.start_time)} - {formatTime(selectedSession.end_time)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600">Miesto</span>
-                        <span className="font-medium text-gray-900">{selectedSession.location}</span>
-                      </div>
-                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600">Cena</span>
-                        <span className="font-medium text-gray-900 text-lg">{selectedSession.price}€</span>
-                      </div>
-                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600">Kapacita</span>
-                        <span className="font-medium text-gray-900">
-                          {selectedSession.capacity} miest
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between py-2">
-                        <span className="text-gray-600">Prihlásení</span>
-                        <span className="font-medium text-gray-900">
-                          {selectedSession.signups?.length || 0}/{selectedSession.capacity}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedSession.description && (
-                    <div>
-                      <h4 className="text-lg font-medium text-gray-900 mb-3">Popis tréningy</h4>
-                      <p className="text-gray-600 leading-relaxed">{selectedSession.description}</p>
-                    </div>
-                  )}
-
-                  {selectedSession.signups && selectedSession.signups.length > 0 && (
-                    <div>
-                      <h4 className="text-lg font-medium text-gray-900 mb-3">
-                        Prihlásení účastníci ({selectedSession.signups.length})
-                      </h4>
-                      <div className="space-y-2">
-                        {selectedSession.signups.map((signup: any, index: number) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div>
-                              <div className="font-medium text-gray-900">
-                                {signup.dog?.name || 'Neznámy pes'}
-                              </div>
-                              <div className="text-sm text-gray-600">
-                                {signup.user?.name || 'Neznámy majiteľ'}
-                              </div>
-                            </div>
-                            <span className={`
-                              px-2 py-1 rounded-full text-xs font-medium
-                              ${signup.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                signup.status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                                'bg-red-100 text-red-800'}
-                            `}>
-                              {signup.status === 'approved' ? 'Schválené' :
-                               signup.status === 'pending' ? 'Čaká' : 'Zamietnuté'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Owner can view but not edit/delete sessions */}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+              {/* Session Detail Modal with signup functionality */}
+        {showSessionModal && selectedSession && (
+          <SessionDetailModal
+            session={createSessionAdapter(selectedSession)}
+            onClose={() => {
+              setShowSessionModal(false);
+              // Refresh sessions after modal closes to show updated data
+              fetchSessions();
+            }}
+          />
+        )}
 
     </div>
   );

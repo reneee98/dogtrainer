@@ -112,9 +112,9 @@ export const sessionApi = {
   update: (token: string, id: number, data: any) => apiRequest(`/sessions/${id}`, { token, method: 'PUT', body: data }),
   delete: (token: string, id: number) => apiRequest(`/sessions/${id}`, { token, method: 'DELETE' }),
   show: (token: string, id: number) => apiRequest(`/sessions/${id}`, { token }),
-  signup: (token: string, sessionId: number, dogId: number) => 
+  signup: (token: string, sessionId: number, dogId: string) => 
     apiRequest(`/sessions/${sessionId}/signup`, { token, method: 'POST', body: { dog_id: dogId } }),
-  joinWaitlist: (token: string, sessionId: number, dogId: number) =>
+  joinWaitlist: (token: string, sessionId: number, dogId: string) =>
     apiRequest(`/sessions/${sessionId}/waitlist`, { token, method: 'POST', body: { dog_id: dogId } }),
 };
 
