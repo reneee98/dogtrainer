@@ -1,38 +1,31 @@
 import { useState, useEffect, useRef } from 'react';
-import { apiRequest } from '../lib/api';
+import { apiRequest, serviceTemplateApi } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
-import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, CalendarIcon, ListBulletIcon } from '@heroicons/react/24/outline';
-
-interface Dog {
-  id: string;
-  name: string;
-  breed: string;
-  age: number;
-  gender: string;
-  weight: number;
-}
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
+import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, CalendarIcon, ListBulletIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+// Owner doesn't need SessionForm - removed import
 
 interface Session {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   location: string;
   start_time: string;
   end_time: string;
   capacity: number;
   price: number;
-  session_type: string;
+  session_type: 'individual' | 'group' | 'daycare';
   status: string;
-  trainer: User;
-  available_spots?: number;
+  waitlist_enabled: boolean;
   signups?: any[];
-  waitlist?: any[];
+}
+
+interface ServiceTemplate {
+  id: number;
+  name: string;
+  color: string;
+  duration: number;
+  price: number;
+  description?: string;
 }
 
 type ViewMode = 'list' | 'month' | 'week';
@@ -45,14 +38,12 @@ const OwnerCalendar = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [showSessionModal, setShowSessionModal] = useState(false);
-  const [dogs, setDogs] = useState<Dog[]>([]);
-  const [selectedDogId, setSelectedDogId] = useState<string>('');
-  const [bookingNotes, setBookingNotes] = useState('');
-  const [isBooking, setIsBooking] = useState(false);
+  // Owner doesn't need session form - removed state
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [touchStartX, setTouchStartX] = useState(0);
   const [touchEndX, setTouchEndX] = useState(0);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const [serviceTemplates, setServiceTemplates] = useState<ServiceTemplate[]>([]);
   const calendarRef = useRef<HTMLDivElement>(null);
 
   // Auto-select best view mode based on screen size
@@ -99,16 +90,30 @@ const OwnerCalendar = () => {
   useEffect(() => {
     if (token) {
       fetchSessions();
-      fetchUserDogs();
+      fetchServiceTemplates();
     }
   }, [currentDate, token]);
 
-  const fetchSessions = async () => {
+  const fetchServiceTemplates = async () => {
     if (!token) return;
     
     try {
+      const response = await serviceTemplateApi.list(token);
+      if (response.success) {
+        setServiceTemplates(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching service templates:', error);
+    }
+  };
+
+  const fetchSessions = async () => {
+    if (!token) return;
+
+    try {
       setLoading(true);
-      const response = await apiRequest('/sessions', { token });
+      // Add cache busting parameter to ensure fresh data
+      const response = await apiRequest(`/sessions?_t=${Date.now()}`, { token });
 
       let sessionData = [];
       if (response.success) {
@@ -119,9 +124,9 @@ const OwnerCalendar = () => {
         }
       }
 
-      // Filter out daycare sessions and only show scheduled sessions
+      // Filter out daycare sessions (tréner nepotrebuje daycare pre tento kalendár)
       const filteredSessions = sessionData.filter((session: Session) => 
-        session.status === 'scheduled' && session.session_type !== 'daycare'
+        session.session_type !== 'daycare'
       );
 
       setSessions(filteredSessions);
@@ -132,84 +137,42 @@ const OwnerCalendar = () => {
     }
   };
 
-  const fetchUserDogs = async () => {
-    if (!token) return;
-    
-    try {
-      const response = await apiRequest('/dogs', { token });
-      if (response.success && Array.isArray(response.data?.dogs)) {
-        setDogs(response.data.dogs);
-        if (response.data.dogs.length > 0) {
-          setSelectedDogId(response.data.dogs[0].id);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching dogs:', error);
-    }
-  };
-
   const handleSessionClick = (session: Session) => {
     setSelectedSession(session);
     setShowSessionModal(true);
   };
 
-  const handleBookSession = async () => {
-    if (!selectedSession || !selectedDogId || !token) return;
-    
-    setIsBooking(true);
-    try {
-      const response = await apiRequest(`/sessions/${selectedSession.id}/signup`, {
-        method: 'POST',
-        token,
-        body: JSON.stringify({
-          dog_id: selectedDogId,
-          notes: bookingNotes
-        })
-      });
-
-      if (response.success) {
-        alert('Úspešne ste sa prihlásili na tréning! Čakáte na schválenie od trénera.');
-        setShowSessionModal(false);
-        setBookingNotes('');
-        fetchSessions();
-      } else {
-        alert(response.message || 'Chyba pri prihlasovaní na tréning.');
-      }
-    } catch (error) {
-      console.error('Error booking session:', error);
-      alert('Chyba pri prihlasovaní na tréning.');
-    } finally {
-      setIsBooking(false);
-    }
-  };
-
-  const isSessionFull = (session: Session): boolean => {
-    return session.available_spots !== undefined && session.available_spots <= 0;
-  };
-
-  const isUserSignedUp = (session: Session): boolean => {
-    return session.signups?.some(signup => 
-      dogs.some(dog => dog.id === signup.dog_id)
-    ) || false;
-  };
+  // Owner booking functionality will be added here later
 
   const getSessionsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    // Use local date format to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
     return sessions.filter(session => {
-      const sessionDate = new Date(session.start_time).toISOString().split('T')[0];
-      return sessionDate === dateStr;
+      const sessionDate = new Date(session.start_time);
+      const sessionYear = sessionDate.getFullYear();
+      const sessionMonth = String(sessionDate.getMonth() + 1).padStart(2, '0');
+      const sessionDay = String(sessionDate.getDate()).padStart(2, '0');
+      const sessionDateStr = `${sessionYear}-${sessionMonth}-${sessionDay}`;
+      
+      return sessionDateStr === dateStr;
     });
   };
 
   const getSessionsForPeriod = () => {
     if (viewMode === 'list') {
-      // Show next 2 weeks for list view
-      const now = new Date();
-      const twoWeeksLater = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+      // Show only today's sessions for list view
+      const today = new Date();
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+      
       return sessions
         .filter(session => {
           const sessionDate = new Date(session.start_time);
-          return sessionDate >= now && sessionDate <= twoWeeksLater;
+          return sessionDate >= startOfToday && sessionDate <= endOfToday;
         })
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
     }
@@ -220,14 +183,6 @@ const OwnerCalendar = () => {
     return new Date(dateStr).toLocaleTimeString('sk-SK', {
       hour: '2-digit',
       minute: '2-digit'
-    });
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('sk-SK', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
     });
   };
 
@@ -254,7 +209,51 @@ const OwnerCalendar = () => {
     if (session.status === 'cancelled') return 'bg-red-500';
     if (session.status === 'completed') return 'bg-gray-400';
     
-    // Fallback to type-based colors (since owner doesn't have service templates)
+    // Debug logging
+    console.log('Session:', session.title, 'Templates available:', serviceTemplates.length);
+    if (serviceTemplates.length > 0) {
+      console.log('Templates:', serviceTemplates.map(t => t.name));
+    }
+    
+    // Try to find matching service template by title
+    const template = serviceTemplates.find(t => t.name === session.title);
+    if (template) {
+      console.log('Found template for', session.title, '- color:', template.color);
+      
+      // Convert simple color name to Tailwind class
+      const colorMap: { [key: string]: string } = {
+        'red': 'bg-red-500',
+        'orange': 'bg-orange-500',
+        'amber': 'bg-amber-500',
+        'yellow': 'bg-yellow-500',
+        'lime': 'bg-lime-500',
+        'green': 'bg-green-500',
+        'emerald': 'bg-emerald-500',
+        'teal': 'bg-teal-500',
+        'cyan': 'bg-cyan-500',
+        'sky': 'bg-sky-500',
+        'blue': 'bg-blue-500',
+        'indigo': 'bg-indigo-500',
+        'violet': 'bg-violet-500',
+        'purple': 'bg-purple-500',
+        'fuchsia': 'bg-fuchsia-500',
+        'pink': 'bg-pink-500',
+        'rose': 'bg-rose-500',
+        'gray': 'bg-gray-500',
+        'slate': 'bg-slate-500',
+        'zinc': 'bg-zinc-500',
+        'neutral': 'bg-neutral-500',
+        'stone': 'bg-stone-500'
+      };
+      
+      const tailwindColor = colorMap[template.color] || 'bg-gray-500';
+      console.log('Converted color:', template.color, '->', tailwindColor);
+      return tailwindColor;
+    } else {
+      console.log('No template found for', session.title);
+    }
+    
+    // Fallback to type-based colors
     switch (session.session_type) {
       case 'individual':
         return 'bg-blue-500';
@@ -263,6 +262,33 @@ const OwnerCalendar = () => {
       default:
         return 'bg-gray-500';
     }
+  };
+
+  const getSessionColorVariants = (session: Session) => {
+    const baseColor = getSessionColor(session);
+    
+    // Extract color name (e.g., 'blue' from 'bg-blue-500')
+    const colorMatch = baseColor.match(/bg-(\w+)-\d+/);
+    const colorName = colorMatch ? colorMatch[1] : 'gray';
+    
+    return {
+      solid: baseColor,
+      light: `bg-${colorName}-50`,
+      border: `border-${colorName}-200`,
+      hover: `hover:bg-${colorName}-100`,
+      text: `text-${colorName}-700`
+    };
+  };
+
+  const getSessionLabel = (session: Session) => {
+    // Try to find matching service template by title
+    const template = serviceTemplates.find(t => t.name === session.title);
+    if (template) {
+      return template.name;
+    }
+    
+    // Fallback to session title
+    return session.title;
   };
 
   const getSessionTypeColor = (type: string, status?: string) => {
@@ -290,6 +316,41 @@ const OwnerCalendar = () => {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'scheduled': return 'Naplánované';
+      case 'completed': return 'Dokončené';
+      case 'cancelled': return 'Zrušené';
+      default: return status;
+    }
+  };
+
+  const isSessionCompleted = (session: Session) => {
+    const now = new Date();
+    const sessionEndTime = new Date(session.end_time);
+    return now > sessionEndTime;
+  };
+
+  const getDisplayStatus = (session: Session) => {
+    if (isSessionCompleted(session)) {
+      return (
+        <div className="flex items-center space-x-1 text-green-700">
+          <CheckCircleIcon className="h-3 w-3" />
+          <span>Hotovo</span>
+        </div>
+      );
+    }
+    return getStatusLabel(session.status);
+  };
+
+  const getSessionDisplayClass = (session: Session) => {
+    const isCompleted = isSessionCompleted(session);
+    if (isCompleted) {
+      return 'opacity-70 cursor-pointer hover:opacity-80 bg-gray-50';
+    }
+    return 'cursor-pointer hover:shadow-md hover:bg-gray-50 active:scale-[0.99]';
+  };
+
   const previousPeriod = () => {
     if (viewMode === 'week') {
       const newDate = new Date(currentDate);
@@ -297,12 +358,8 @@ const OwnerCalendar = () => {
       setCurrentDate(newDate);
     } else if (viewMode === 'month') {
       setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-    } else {
-      // For list view, go back 2 weeks
-      const newDate = new Date(currentDate);
-      newDate.setDate(currentDate.getDate() - 14);
-      setCurrentDate(newDate);
     }
+    // List view navigation disabled - always shows today only
   };
 
   const nextPeriod = () => {
@@ -312,12 +369,8 @@ const OwnerCalendar = () => {
       setCurrentDate(newDate);
     } else if (viewMode === 'month') {
       setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-    } else {
-      // For list view, go forward 2 weeks
-      const newDate = new Date(currentDate);
-      newDate.setDate(currentDate.getDate() + 14);
-      setCurrentDate(newDate);
     }
+    // List view navigation disabled - always shows today only
   };
 
   const goToToday = () => {
@@ -373,7 +426,7 @@ const OwnerCalendar = () => {
 
   const getCalendarTitle = () => {
     if (viewMode === 'list') {
-      return 'Nadchádzajúce tréningy';
+      return 'Dnešné tréningy';
     } else if (viewMode === 'week') {
       const weekDays = getWeekDays();
       const start = weekDays[0];
@@ -391,126 +444,121 @@ const OwnerCalendar = () => {
 
   // Mobile List View - Primary view for phones
   const renderListView = () => {
-    const upcomingSessions = getSessionsForPeriod();
+    const todaysSessions = getSessionsForPeriod();
     
-    if (upcomingSessions.length === 0) {
+    if (todaysSessions.length === 0) {
       return (
         <div className="text-center py-12">
           <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Žiadne nadchádzajúce tréningy
+            Žiadne dnešné tréningy
           </h3>
           <p className="text-gray-500 mb-6">
-            Momentálne nie sú naplánované žiadne tréningy.
+            Dnes nie sú naplánované žiadne tréningy.
           </p>
+          {/* Owner cannot create sessions */}
         </div>
       );
     }
 
     return (
-      <div className="space-y-2">
+      <div className="space-y-4">
+        {/* Action button */}
+        {/* Owner cannot create sessions - removed button */}
+
         {/* Training Sessions List - Simple rows for mobile */}
-        {upcomingSessions.map((session) => (
-          <div
-            key={session.id}
-            onClick={() => handleSessionClick(session)}
-            className={`bg-white rounded-lg border border-gray-200 p-3 transition-all duration-200 cursor-pointer hover:shadow-sm`}
-          >
-            {/* Mobile: Simple row layout */}
-            <div className="sm:hidden">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-3 h-3 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
-                  <div>
-                    <div className="font-medium text-gray-900 text-sm">
-                      {formatTime(session.start_time)} - {session.title}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {session.location} • {session.signups?.length || 0}/{session.capacity}
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  {isUserSignedUp(session) ? (
-                    <div className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                      Prihlásený
-                    </div>
-                  ) : isSessionFull(session) ? (
-                    <div className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
-                      Plný
-                    </div>
-                  ) : (
-                    <div className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                      Dostupný
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Desktop: Enhanced row layout with more details */}
-            <div className="hidden sm:block">
-              <div className="space-y-3">
-                {/* Main row with all key info */}
+        <div className="space-y-2">
+          {todaysSessions.map((session) => (
+            <div
+              key={session.id}
+              onClick={() => handleSessionClick(session)}
+              className={`bg-white rounded-lg border border-gray-200 p-3 transition-all duration-200 cursor-pointer hover:shadow-sm ${getSessionDisplayClass(session)}`}
+            >
+              {/* Mobile: Simple row layout */}
+              <div className="sm:hidden">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4 flex-1">
-                    <div className={`w-3 h-3 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900">
-                        {formatTime(session.start_time)} - {formatTime(session.end_time)} • {session.title}
-                      </div>
-                      <div className="text-sm text-gray-500 mt-0.5">
-                        {session.location} • {session.trainer.name} • {session.signups?.length || 0}/{session.capacity} účastníkov
-                      </div>
-                    </div>
-                  </div>
                   <div className="flex items-center space-x-3">
-                    {isUserSignedUp(session) ? (
-                      <div className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
-                        Prihlásený
+                    <div className={`w-3 h-3 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
+                    <div>
+                      <div className="font-medium text-gray-900 text-sm">
+                        {formatTime(session.start_time)} - {getSessionLabel(session)}
                       </div>
-                    ) : isSessionFull(session) ? (
-                      <div className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700">
-                        Plný
+                      <div className="text-xs text-gray-500">
+                        {session.location} • {session.signups?.length || 0}/{session.capacity}
                       </div>
-                    ) : (
-                      <div className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                        Dostupný
-                      </div>
-                    )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-gray-900">{session.price}€</div>
+                    <div className={`text-xs px-2 py-0.5 rounded-full ${
+                      isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
+                      session.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+                      session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {getDisplayStatus(session)}
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Progress bar and additional details */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4 flex-1">
-                    {session.capacity > 0 && (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs text-gray-500">Obsadenosť:</span>
-                        <div className="w-24 bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="h-2 rounded-full bg-blue-500"
-                            style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
-                          ></div>
+              {/* Desktop: Enhanced row layout with more details */}
+              <div className="hidden sm:block">
+                <div className="space-y-3">
+                  {/* Main row with all key info */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4 flex-1">
+                      <div className={`w-3 h-3 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">
+                          {formatTime(session.start_time)} - {formatTime(session.end_time)} • {getSessionLabel(session)}
                         </div>
-                        <span className="text-xs text-gray-500">
-                          {Math.round(((session.signups?.length || 0) / session.capacity) * 100)}%
-                        </span>
+                        <div className="text-sm text-gray-500 mt-0.5">
+                          {session.location} • {session.signups?.length || 0}/{session.capacity} účastníkov
+                        </div>
                       </div>
-                    )}
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className={`text-xs px-2 py-1 rounded-full ${
+                        isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
+                        session.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+                        session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {getDisplayStatus(session)}
+                      </div>
+                      <div className="text-lg font-semibold text-gray-900">
+                        {session.price}€
+                      </div>
+                    </div>
                   </div>
-                  
-                  {/* Session Type */}
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs text-gray-500 uppercase tracking-wide">
-                      {getSessionTypeLabel(session.session_type)}
-                    </span>
+
+                  {/* Progress bar and additional details */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4 flex-1">
+                      {session.capacity > 0 && (
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-gray-500">Obsadenosť:</span>
+                          <div className="w-24 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="h-2 rounded-full bg-blue-500"
+                              style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {Math.round(((session.signups?.length || 0) / session.capacity) * 100)}%
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Owner cannot edit/delete sessions */}
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     );
   };
@@ -518,20 +566,10 @@ const OwnerCalendar = () => {
   const renderWeekView = () => {
     const weekDays = getWeekDays();
 
-    const toggleDayExpansion = (dayKey: string) => {
-      const newExpanded = new Set(expandedDays);
-      if (newExpanded.has(dayKey)) {
-        newExpanded.delete(dayKey);
-      } else {
-        newExpanded.add(dayKey);
-      }
-      setExpandedDays(newExpanded);
-    };
-
     return (
       <div className="space-y-4">
-        {/* Day headers - Horizontal scroll on mobile */}
-        <div className="grid grid-cols-7 gap-1 sm:gap-2">
+        {/* Day headers - Only show on desktop */}
+        <div className="hidden sm:grid sm:grid-cols-7 sm:gap-1 sm:gap-2">
           {weekDayNames.map((dayName, index) => {
             const day = weekDays[index];
             const isTodayDay = isToday(day);
@@ -539,7 +577,7 @@ const OwnerCalendar = () => {
             return (
               <div key={dayName} className="p-2 sm:p-4 text-center bg-gray-50 rounded-lg">
                 <div className="text-xs sm:text-sm font-medium text-gray-600 truncate">
-                  {window.innerWidth < 640 ? dayName.substring(0, 2) : dayName}
+                  {dayName}
                 </div>
                 <div className={`text-lg sm:text-2xl font-bold ${isTodayDay ? 'text-blue-600' : 'text-gray-900'}`}>
                   {day.getDate()}
@@ -549,116 +587,141 @@ const OwnerCalendar = () => {
           })}
         </div>
 
-        {/* Sessions - Responsive grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-7 gap-2 sm:gap-1">
+        {/* Mobile: Complete vertical list view of sessions by day */}
+        <div className="sm:hidden space-y-4">
+          {weekDays.map((day, index) => {
+            const daySessions = getSessionsForDate(day);
+            const isTodayDay = isToday(day);
+
+            // Skip days with no sessions on mobile for cleaner view
+            if (daySessions.length === 0) return null;
+
+            return (
+              <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className={`text-lg font-semibold ${isTodayDay ? 'text-blue-600' : 'text-gray-900'}`}>
+                    {weekDayNames[index]}, {day.getDate()}. {monthNames[day.getMonth()]}
+                    {isTodayDay && <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Dnes</span>}
+                  </h3>
+                  {/* Owner cannot create sessions */}
+                </div>
+                
+                <div className="space-y-4">
+                  {daySessions.map((session) => (
+                    <div
+                      key={session.id}
+                      onClick={() => handleSessionClick(session)}
+                      className={`p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer ${getSessionDisplayClass(session)}`}
+                    >
+                      <div className="space-y-3">
+                        {/* Header row */}
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start space-x-3">
+                            <div className={`w-3 h-3 rounded-full ${getSessionColor(session)} flex-shrink-0 mt-1`}></div>
+                            <div>
+                              <div className="font-semibold text-gray-900 text-base">
+                                {getSessionLabel(session)}
+                              </div>
+                              <div className={`text-xs px-2 py-1 rounded-full inline-flex items-center mt-1 ${
+                                isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
+                                session.status === 'scheduled' ? 'bg-green-100 text-green-700' :
+                                session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                                'bg-red-100 text-red-700'
+                              }`}>
+                                {getDisplayStatus(session)}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-xl font-bold text-gray-900">
+                            {session.price}€
+                          </div>
+                        </div>
+
+                        {/* Details section */}
+                        <div className="border-t border-gray-100 pt-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-600">Čas:</span>
+                            <span className="text-sm text-gray-900 font-medium">
+                              {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-600">Lokácia:</span>
+                            <span className="text-sm text-gray-900 truncate max-w-[60%] text-right">
+                              {session.location}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-600">Účastníci:</span>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm text-gray-900 font-medium">
+                                {session.signups?.length || 0}/{session.capacity}
+                              </span>
+                              {session.capacity > 0 && (
+                                <div className="w-16 bg-gray-200 rounded-full h-2">
+                                  <div 
+                                    className="h-2 rounded-full bg-blue-500"
+                                    style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
+                                  ></div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop/Tablet: Traditional week grid */}
+        <div className="hidden sm:grid sm:grid-cols-7 sm:gap-1">
           {weekDays.map((day, index) => {
             const daySessions = getSessionsForDate(day);
             const isTodayDay = isToday(day);
 
             return (
-              <div key={index} className="sm:hidden">
-                {/* Mobile: Show day sessions in list format */}
-                {daySessions.length > 0 && (
-                  <div className="mb-4">
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">
-                      {weekDayNames[index]}, {day.getDate()}. {monthNames[day.getMonth()]}
-                    </h3>
-                    <div className="space-y-2">
-                      {daySessions.map((session) => (
-                        <div
-                          key={session.id}
-                          onClick={() => handleSessionClick(session)}
-                          className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="text-sm font-medium text-gray-900">
-                              {formatTime(session.start_time)}
+              <div
+                key={index}
+                className={`
+                  min-h-[300px] lg:min-h-[400px] p-2 lg:p-3 rounded-lg border transition-all relative group
+                  ${isTodayDay ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'}
+                `}
+              >
+                {/* Owner cannot create sessions */}
+                
+                <div className="space-y-1">
+                  {daySessions.map((session) => (
+                    <button
+                      key={session.id}
+                      onClick={() => handleSessionClick(session)}
+                      className={`w-full p-2 rounded-lg transition-all active:scale-[0.98] bg-gray-100 border border-gray-200 ${getSessionDisplayClass(session)}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-2 flex-1 min-w-0">
+                          <div className={`w-2 h-2 rounded-full ${getSessionColor(session)} flex-shrink-0 mt-1`}></div>
+                          <div className="flex-1 min-w-0 text-left">
+                            <div className="text-xs font-medium text-gray-900 truncate">
+                              {getSessionLabel(session)}
                             </div>
-                            <div className="text-sm text-gray-900">
-                              {session.title}
+                            <div className="text-xs text-gray-600 mt-0.5">
+                              {session.signups?.length || 0}/{session.capacity}
                             </div>
                           </div>
-                          <div className={`w-2 h-2 rounded-full ${
-                            session.session_type === 'individual' ? 'bg-blue-500' :
-                            session.session_type === 'group' ? 'bg-green-500' : 'bg-purple-500'
-                          }`} />
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                        <div className="text-xs font-medium text-gray-700 flex-shrink-0">
+                          {formatTime(session.start_time)}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             );
           })}
-
-          {/* Desktop/Tablet: Traditional week grid */}
-          <div className="hidden sm:grid sm:grid-cols-7 sm:gap-1 sm:col-span-7">
-            {weekDays.map((day, index) => {
-              const daySessions = getSessionsForDate(day);
-              const isTodayDay = isToday(day);
-              const dayKey = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
-              const isExpanded = expandedDays.has(dayKey);
-              const visibleSessions = isExpanded ? daySessions : daySessions.slice(0, 3);
-              const hasMore = daySessions.length > 3;
-
-              return (
-                <div
-                  key={index}
-                  className={`
-                    min-h-[300px] lg:min-h-[400px] p-2 lg:p-3 rounded-lg border transition-all
-                    ${isTodayDay ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'}
-                  `}
-                >
-                  <div className="space-y-1">
-                    {visibleSessions.map((session) => (
-                      <button
-                        key={session.id}
-                        onClick={() => handleSessionClick(session)}
-                        className={`
-                          w-full text-left p-2 rounded-md transition-all hover:scale-[1.02] cursor-pointer border
-                          ${session.session_type === 'individual' 
-                            ? 'bg-blue-50 border-blue-200 hover:bg-blue-100' 
-                            : session.session_type === 'group'
-                            ? 'bg-green-50 border-green-200 hover:bg-green-100'
-                            : 'bg-purple-50 border-purple-200 hover:bg-purple-100'
-                          }
-                        `}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium text-gray-900 truncate pr-2">
-                              {session.title}
-                            </div>
-                            <div className="text-xs text-gray-600 mt-0.5">
-                              {session.available_spots !== undefined ? 
-                                `${session.capacity - session.available_spots}/${session.capacity}` :
-                                `${session.capacity} miest`
-                              }
-                            </div>
-                          </div>
-                          <div className="text-xs font-medium text-gray-700 flex-shrink-0">
-                            {formatTime(session.start_time)}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                    
-                    {hasMore && (
-                      <button
-                        onClick={() => toggleDayExpansion(dayKey)}
-                        className="w-full text-xs text-gray-500 p-2 text-center bg-gray-50 hover:bg-gray-100 rounded-md transition-colors border border-gray-200"
-                      >
-                        {isExpanded 
-                          ? `Skryť ${daySessions.length - 3} ${daySessions.length - 3 === 1 ? 'tréning' : daySessions.length - 3 <= 4 ? 'tréningy' : 'tréningov'}`
-                          : `+${daySessions.length - 3} ${daySessions.length - 3 === 1 ? 'ďalší' : 'ďalších'}`
-                        }
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </div>
     );
@@ -699,7 +762,7 @@ const OwnerCalendar = () => {
                   setSelectedDate(date);
                 }}
                 className={`
-                  h-12 sm:h-16 lg:h-20 relative flex flex-col items-center justify-center
+                  h-12 sm:h-16 lg:h-20 relative flex flex-col items-center justify-center group
                   border-r border-b border-gray-100 last:border-r-0
                   transition-all duration-200 hover:bg-gray-50 active:bg-gray-100
                   ${!isCurrentMonthDay ? 'opacity-30' : ''}
@@ -744,6 +807,13 @@ const OwnerCalendar = () => {
                   </div>
                 )}
 
+                {/* Plus Icon for Creating New Session - show on all devices */}
+                {isCurrentMonthDay && (
+                  <div className="absolute top-1 sm:top-2 right-1 sm:right-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                    {/* Owner cannot create sessions */}
+                  </div>
+                )}
+
                 {/* Desktop hover preview */}
                 {daySessions.length > 0 && window.innerWidth >= 640 && (
                   <div className="hidden group-hover:block absolute top-full left-0 z-20 mt-1 w-48 p-2 bg-white rounded-lg shadow-lg border border-gray-200">
@@ -751,6 +821,7 @@ const OwnerCalendar = () => {
                       <div key={session.id} className="text-xs text-left p-1">
                         <div className="font-medium text-gray-900 truncate">{session.title}</div>
                         <div className="text-gray-500">{formatTime(session.start_time)}</div>
+                        <div className="text-gray-400 flex items-center">{getDisplayStatus(session)}</div>
                       </div>
                     ))}
                     {daySessions.length > 3 && (
@@ -784,6 +855,8 @@ const OwnerCalendar = () => {
               </div>
             </div>
 
+            {/* Owner cannot create sessions */}
+
             {/* Sessions list */}
             {selectedDateSessions.length > 0 ? (
               <div className="px-4 pb-4 space-y-3">
@@ -800,7 +873,7 @@ const OwnerCalendar = () => {
                           <div className={`w-3 h-3 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
                           <div>
                             <div className="font-medium text-gray-900 text-sm">
-                              {formatTime(session.start_time)} - {session.title}
+                              {formatTime(session.start_time)} - {getSessionLabel(session)}
                             </div>
                             <div className="text-xs text-gray-500">
                               {session.location} • {session.signups?.length || 0}/{session.capacity}
@@ -808,19 +881,15 @@ const OwnerCalendar = () => {
                           </div>
                         </div>
                         <div className="text-right">
-                          {isUserSignedUp(session) ? (
-                            <div className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                              Prihlásený
-                            </div>
-                          ) : isSessionFull(session) ? (
-                            <div className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
-                              Plný
-                            </div>
-                          ) : (
-                            <div className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                              Dostupný
-                            </div>
-                          )}
+                          <div className="text-sm font-semibold text-gray-900">{session.price}€</div>
+                          <div className={`text-xs px-2 py-0.5 rounded-full ${
+                            isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
+                            session.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+                            session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {getDisplayStatus(session)}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -834,64 +903,52 @@ const OwnerCalendar = () => {
                             <div className={`w-3 h-3 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
                             <div className="flex-1">
                               <div className="font-medium text-gray-900">
-                                {formatTime(session.start_time)} - {formatTime(session.end_time)} • {session.title}
+                                {formatTime(session.start_time)} - {formatTime(session.end_time)} • {getSessionLabel(session)}
                               </div>
                               <div className="text-sm text-gray-500 mt-0.5">
-                                {session.location} • {session.trainer.name} • {session.signups?.length || 0}/{session.capacity} účastníkov
+                                {session.location} • {session.signups?.length || 0}/{session.capacity} účastníkov
                               </div>
                             </div>
                           </div>
                           <div className="flex items-center space-x-3">
-                            {isUserSignedUp(session) ? (
-                              <div className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
-                                Prihlásený
-                              </div>
-                            ) : isSessionFull(session) ? (
-                              <div className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700">
-                                Plný
-                              </div>
-                            ) : (
-                              <div className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                                Dostupný
-                              </div>
-                            )}
+                            <div className={`text-xs px-2 py-1 rounded-full ${
+                              isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
+                              session.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+                              session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              {getDisplayStatus(session)}
+                            </div>
+                            <div className="text-lg font-semibold text-gray-900">
+                              {session.price}€
+                            </div>
                           </div>
                         </div>
 
-                        {/* Progress bar and additional details */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4 flex-1">
-                            {session.capacity > 0 && (
-                              <div className="flex items-center space-x-2">
-                                <span className="text-xs text-gray-500">Obsadenosť:</span>
-                                <div className="w-24 bg-gray-200 rounded-full h-2">
-                                  <div 
-                                    className="h-2 rounded-full bg-blue-500"
-                                    style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
-                                  ></div>
-                                </div>
-                                <span className="text-xs text-gray-500">
-                                  {Math.round(((session.signups?.length || 0) / session.capacity) * 100)}%
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Session Type */}
+                        {/* Progress bar */}
+                        {session.capacity > 0 && (
                           <div className="flex items-center space-x-2">
-                            <span className="text-xs text-gray-500 uppercase tracking-wide">
-                              {getSessionTypeLabel(session.session_type)}
+                            <span className="text-xs text-gray-500">Obsadenosť:</span>
+                            <div className="w-24 bg-gray-200 rounded-full h-1.5">
+                              <div 
+                                className="h-1.5 rounded-full bg-blue-500"
+                                style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {Math.round(((session.signups?.length || 0) / session.capacity) * 100)}%
                             </span>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="px-4 py-8 text-center text-gray-500">
-                Žiadne tréningy v tento deň
+              <div className="px-4 py-6 text-center text-gray-500">
+                <CalendarIcon className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm">Žiadne tréningy</p>
               </div>
             )}
           </div>
@@ -908,22 +965,30 @@ const OwnerCalendar = () => {
                 <div className="bg-blue-50 border-t border-blue-100">
                   <div className="px-4 py-3">
                     <h3 className="font-medium text-blue-900 mb-2">Dnešné tréningy</h3>
-                    <div className="space-y-1">
+                    <div className="space-y-3">
                       {todaySessions.slice(0, 3).map((session) => (
-                        <button
+                        <div
                           key={session.id}
                           onClick={() => handleSessionClick(session)}
-                          className="w-full flex items-center justify-between py-2 hover:bg-blue-100 rounded-md transition-colors"
+                          className="bg-white rounded-lg p-3 border border-blue-200 cursor-pointer hover:bg-blue-50 transition-colors"
                         >
-                          <div className="flex items-center space-x-3">
-                            <div className="text-sm font-medium text-blue-900">
-                              {formatTime(session.start_time)}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <div className={`w-2 h-2 rounded-full ${getSessionColor(session)}`}></div>
+                                <div className="text-sm font-medium text-blue-900">
+                                  {formatTime(session.start_time)}
+                                </div>
+                              </div>
+                              <div className="text-xs text-blue-700">
+                                {session.signups?.length || 0}/{session.capacity}
+                              </div>
                             </div>
-                            <div className="text-sm text-blue-800">
-                              {session.title}
+                            <div className="text-sm text-blue-800 font-medium">
+                              {getSessionLabel(session)}
                             </div>
                           </div>
-                        </button>
+                        </div>
                       ))}
                       {todaySessions.length > 3 && (
                         <div className="text-center text-xs text-blue-700 pt-1">
@@ -950,9 +1015,9 @@ const OwnerCalendar = () => {
   }
 
   return (
-    <div className="w-full">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-100">
+      <div className="bg-white shadow-sm border border-gray-200 rounded-lg mb-4">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
             {/* Title and Today button */}
@@ -1004,21 +1069,23 @@ const OwnerCalendar = () => {
                 </button>
               </div>
               
-              {/* Navigation */}
-              <div className="flex items-center">
-                <button
-                  onClick={previousPeriod}
-                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
-                >
-                  <ChevronLeftIcon className="h-5 w-5" />
-                </button>
-                <button
-                  onClick={nextPeriod}
-                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
-                >
-                  <ChevronRightIcon className="h-5 w-5" />
-                </button>
-              </div>
+              {/* Navigation - Hidden for list view since it shows only today */}
+              {viewMode !== 'list' && (
+                <div className="flex items-center">
+                  <button
+                    onClick={previousPeriod}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
+                  >
+                    <ChevronLeftIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={nextPeriod}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
+                  >
+                    <ChevronRightIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1050,17 +1117,23 @@ const OwnerCalendar = () => {
               <div className="p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
-                      {selectedSession.title}
-                    </h3>
-                    <span className={`
-                      inline-block px-3 py-1 rounded-full text-sm font-medium
-                      ${selectedSession.session_type === 'individual' 
-                        ? 'bg-blue-100 text-blue-800' 
-                        : 'bg-green-100 text-green-800'}
-                    `}>
-                      {getSessionTypeLabel(selectedSession.session_type)}
-                    </span>
+                    <div className="flex items-center space-x-3 mb-2">
+                      <div className={`w-3 h-3 rounded-full ${getSessionColor(selectedSession)}`}></div>
+                      <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">
+                        {getSessionLabel(selectedSession)}
+                      </h3>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className={`
+                        inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                        ${isSessionCompleted(selectedSession) ? 'bg-green-100 text-green-800' :
+                          selectedSession.status === 'scheduled' ? 'bg-green-100 text-green-800' :
+                          selectedSession.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'}
+                      `}>
+                        {getDisplayStatus(selectedSession)}
+                      </span>
+                    </div>
                   </div>
                   <button
                     onClick={() => setShowSessionModal(false)}
@@ -1074,6 +1147,12 @@ const OwnerCalendar = () => {
                   <div>
                     <h4 className="text-lg font-medium text-gray-900 mb-4">Detaily tréningy</h4>
                     <div className="space-y-3">
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Služba</span>
+                        <span className="font-medium text-gray-900">
+                          {getSessionLabel(selectedSession)}
+                        </span>
+                      </div>
                       <div className="flex items-center justify-between py-2 border-b border-gray-100">
                         <span className="text-gray-600">Dátum</span>
                         <span className="font-medium text-gray-900">
@@ -1091,17 +1170,19 @@ const OwnerCalendar = () => {
                         <span className="font-medium text-gray-900">{selectedSession.location}</span>
                       </div>
                       <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600">Tréner</span>
-                        <span className="font-medium text-gray-900">{selectedSession.trainer.name}</span>
-                      </div>
-                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
                         <span className="text-gray-600">Cena</span>
                         <span className="font-medium text-gray-900 text-lg">{selectedSession.price}€</span>
                       </div>
-                      <div className="flex items-center justify-between py-2">
-                        <span className="text-gray-600">Voľné miesta</span>
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Kapacita</span>
                         <span className="font-medium text-gray-900">
-                          {selectedSession.available_spots || 0}/{selectedSession.capacity}
+                          {selectedSession.capacity} miest
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-2">
+                        <span className="text-gray-600">Prihlásení</span>
+                        <span className="font-medium text-gray-900">
+                          {selectedSession.signups?.length || 0}/{selectedSession.capacity}
                         </span>
                       </div>
                     </div>
@@ -1114,76 +1195,45 @@ const OwnerCalendar = () => {
                     </div>
                   )}
 
-                  <div className="pt-4">
-                    {isUserSignedUp(selectedSession) ? (
-                      <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span className="text-green-800 font-medium">Už ste prihlásený na tento tréning</span>
-                        </div>
+                  {selectedSession.signups && selectedSession.signups.length > 0 && (
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-3">
+                        Prihlásení účastníci ({selectedSession.signups.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {selectedSession.signups.map((signup: any, index: number) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div>
+                              <div className="font-medium text-gray-900">
+                                {signup.dog?.name || 'Neznámy pes'}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {signup.user?.name || 'Neznámy majiteľ'}
+                              </div>
+                            </div>
+                            <span className={`
+                              px-2 py-1 rounded-full text-xs font-medium
+                              ${signup.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                signup.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                                'bg-red-100 text-red-800'}
+                            `}>
+                              {signup.status === 'approved' ? 'Schválené' :
+                               signup.status === 'pending' ? 'Čaká' : 'Zamietnuté'}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                    ) : isSessionFull(selectedSession) ? (
-                      <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                          <span className="text-red-800 font-medium">Tréning je plne obsadený</span>
-                        </div>
-                      </div>
-                    ) : dogs.length === 0 ? (
-                      <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                          <span className="text-amber-800 font-medium">Najprv si pridajte svojho psa</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Vyberte psa pre tréning
-                          </label>
-                          <select
-                            value={selectedDogId}
-                            onChange={(e) => setSelectedDogId(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          >
-                            {dogs.map((dog) => (
-                              <option key={dog.id} value={dog.id}>
-                                {dog.name} ({dog.breed})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Poznámky (voliteľné)
-                          </label>
-                          <textarea
-                            value={bookingNotes}
-                            onChange={(e) => setBookingNotes(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            rows={3}
-                            placeholder="Dodatočné informácie pre trénera..."
-                          />
-                        </div>
+                    </div>
+                  )}
 
-                        <button
-                          onClick={handleBookSession}
-                          disabled={isBooking || !selectedDogId}
-                          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
-                        >
-                          {isBooking ? 'Prihlasuje sa...' : 'Prihlásiť sa na tréning'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  {/* Owner can view but not edit/delete sessions */}
                 </div>
               </div>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 };

@@ -53,16 +53,27 @@ export default function DogForm({ dog, onClose, onSuccess }: DogFormProps) {
   const onSubmit = async (data: DogFormData) => {
     setLoading(true);
     try {
+      let response;
       if (dog) {
-        await dogApi.update(token!, dog.id, data);
-        toast.success('Pes bol aktualizovaný');
+        response = await dogApi.update(token!, dog.id, data);
+        if (response.success) {
+          toast.success('Pes bol aktualizovaný');
+        } else {
+          toast.error(response.message || 'Chyba pri aktualizácii psa');
+          return;
+        }
       } else {
-        await dogApi.create(token!, data);
-        toast.success('Pes bol pridaný');
+        response = await dogApi.create(token!, data);
+        if (response.success) {
+          toast.success('Pes bol pridaný');
+        } else {
+          toast.error(response.message || 'Chyba pri pridávaní psa');
+          return;
+        }
       }
       onSuccess();
-    } catch (error) {
-      toast.error('Chyba pri ukladaní psa');
+    } catch (error: any) {
+      toast.error(error.message || 'Chyba pri ukladaní psa');
     } finally {
       setLoading(false);
     }

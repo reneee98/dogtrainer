@@ -24,21 +24,28 @@ export default function DogsList() {
   const [editingDog, setEditingDog] = useState<Dog | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: dogs, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['dogs'],
     queryFn: () => dogApi.list(token!),
     enabled: !!token,
   });
 
+  // Extract dogs array from API response
+  const dogs = data?.success ? data.data?.dogs || [] : [];
+
   const handleDelete = async (dogId: number) => {
     if (!confirm('Ste si istí, že chcete odstrániť tohto psa?')) return;
 
     try {
-      await dogApi.delete(token!, dogId);
-      queryClient.invalidateQueries({ queryKey: ['dogs'] });
-      toast.success('Pes bol odstránený');
-    } catch (error) {
-      toast.error('Chyba pri odstraňovaní psa');
+      const response = await dogApi.delete(token!, dogId);
+      if (response.success) {
+        queryClient.invalidateQueries({ queryKey: ['dogs'] });
+        toast.success('Pes bol odstránený');
+      } else {
+        toast.error(response.message || 'Chyba pri odstraňovaní psa');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Chyba pri odstraňovaní psa');
     }
   };
 
