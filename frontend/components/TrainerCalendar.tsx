@@ -525,99 +525,130 @@ const TrainerCalendar = () => {
           </button>
         </div>
 
-        {/* Training Sessions List */}
-        <div className="space-y-4">
+        {/* Training Sessions List - Simple rows for mobile */}
+        <div className="space-y-2">
           {todaysSessions.map((session) => (
             <div
               key={session.id}
               onClick={() => handleSessionClick(session)}
-              className={`bg-white rounded-lg border border-gray-200 p-4 transition-all duration-200 cursor-pointer hover:shadow-md ${getSessionDisplayClass(session)}`}
+              className={`bg-white rounded-lg border border-gray-200 p-3 transition-all duration-200 cursor-pointer hover:shadow-sm ${getSessionDisplayClass(session)}`}
             >
-              <div className="space-y-3">
-                {/* Header with service name and price */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${getSessionColor(session)} flex-shrink-0 mt-1.5`}></div>
+              {/* Mobile: Simple row layout */}
+              <div className="sm:hidden">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-3 h-3 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
                     <div>
-                      <div className="font-medium text-gray-900">
-                        {getSessionLabel(session)}
+                      <div className="font-medium text-gray-900 text-sm">
+                        {formatTime(session.start_time)} - {getSessionLabel(session)}
                       </div>
-                      <div className={`text-xs px-2 py-0.5 rounded-full inline-flex items-center mt-1 ${
-                        isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
-                        session.status === 'scheduled' ? 'bg-green-100 text-green-700' :
-                        session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
-                        {getDisplayStatus(session)}
+                      <div className="text-xs text-gray-500">
+                        {session.location} • {session.signups?.length || 0}/{session.capacity}
                       </div>
                     </div>
                   </div>
-                  <div className="text-lg font-semibold text-gray-900">
-                    {session.price}€
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-gray-900">{session.price}€</div>
+                    <div className={`text-xs px-2 py-0.5 rounded-full ${
+                      isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
+                      session.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+                      session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {getDisplayStatus(session)}
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Session details */}
-                <div className="space-y-2 border-t border-gray-100 pt-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Dátum:</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {formatRelativeDate(session.start_time)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Čas:</span>
-                    <span className="text-sm text-gray-900">
-                      {formatTime(session.start_time)} - {formatTime(session.end_time)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Lokácia:</span>
-                    <span className="text-sm text-gray-900 truncate max-w-[60%] text-right">
-                      {session.location}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Účastníci:</span>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-gray-900">
-                        {session.signups?.length || 0}/{session.capacity}
-                      </span>
-                      {session.capacity > 0 && (
-                        <div className="w-16 bg-gray-200 rounded-full h-1.5">
-                          <div 
-                            className="h-1.5 rounded-full bg-blue-500"
-                            style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
-                          ></div>
+              {/* Desktop: Detailed layout */}
+              <div className="hidden sm:block">
+                <div className="space-y-3">
+                  {/* Header with service name and price */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-2">
+                      <div className={`w-2 h-2 rounded-full ${getSessionColor(session)} flex-shrink-0 mt-1.5`}></div>
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {getSessionLabel(session)}
                         </div>
-                      )}
+                        <div className={`text-xs px-2 py-0.5 rounded-full inline-flex items-center mt-1 ${
+                          isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
+                          session.status === 'scheduled' ? 'bg-green-100 text-green-700' :
+                          session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {getDisplayStatus(session)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {session.price}€
                     </div>
                   </div>
-                </div>
 
-                {/* Actions */}
-                <div className="flex justify-end space-x-2 border-t border-gray-100 pt-3">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditSession(session);
-                    }}
-                    className="px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                  >
-                    Upraviť
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteSession(session.id);
-                    }}
-                    className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded transition-colors"
-                  >
-                    Zmazať
-                  </button>
+                  {/* Session details */}
+                  <div className="space-y-2 border-t border-gray-100 pt-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Dátum:</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {formatRelativeDate(session.start_time)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Čas:</span>
+                      <span className="text-sm text-gray-900">
+                        {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Lokácia:</span>
+                      <span className="text-sm text-gray-900 truncate max-w-[60%] text-right">
+                        {session.location}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Účastníci:</span>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-900">
+                          {session.signups?.length || 0}/{session.capacity}
+                        </span>
+                        {session.capacity > 0 && (
+                          <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                            <div 
+                              className="h-1.5 rounded-full bg-blue-500"
+                              style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
+                            ></div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex justify-end space-x-2 border-t border-gray-100 pt-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditSession(session);
+                      }}
+                      className="px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                    >
+                      Upraviť
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSession(session.id);
+                      }}
+                      className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded transition-colors"
+                    >
+                      Zmazať
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1001,27 +1032,30 @@ const TrainerCalendar = () => {
                 <div className="bg-blue-50 border-t border-blue-100">
                   <div className="px-4 py-3">
                     <h3 className="font-medium text-blue-900 mb-2">Dnešné tréningy</h3>
-                    <div className="space-y-1">
+                    <div className="space-y-3">
                       {todaySessions.slice(0, 3).map((session) => (
-                        <button
+                        <div
                           key={session.id}
                           onClick={() => handleSessionClick(session)}
-                          className={getSessionDisplayClass(session)}
+                          className="bg-white rounded-lg p-3 border border-blue-200 cursor-pointer hover:bg-blue-50 transition-colors"
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <div className="text-sm font-medium text-blue-900">
-                                {formatTime(session.start_time)}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <div className={`w-2 h-2 rounded-full ${getSessionColor(session)}`}></div>
+                                <div className="text-sm font-medium text-blue-900">
+                                  {formatTime(session.start_time)}
+                                </div>
                               </div>
-                              <div className="text-sm text-blue-800">
-                                {session.title}
+                              <div className="text-xs text-blue-700">
+                                {session.signups?.length || 0}/{session.capacity}
                               </div>
                             </div>
-                            <div className="text-xs text-blue-700">
-                              {session.signups?.length || 0}/{session.capacity}
+                            <div className="text-sm text-blue-800 font-medium">
+                              {getSessionLabel(session)}
                             </div>
                           </div>
-                        </button>
+                        </div>
                       ))}
                       {todaySessions.length > 3 && (
                         <div className="text-center text-xs text-blue-700 pt-1">
