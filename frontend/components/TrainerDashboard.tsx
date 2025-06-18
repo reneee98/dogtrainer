@@ -1,21 +1,33 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { 
   CalendarDaysIcon, 
   UsersIcon, 
   StarIcon, 
   ClockIcon,
   CheckCircleIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  PlayIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { sessionApi, bookingApi, reviewApi } from '../lib/api';
-import { format, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { format, startOfWeek, endOfWeek, isWithinInterval, differenceInMinutes, differenceInSeconds } from 'date-fns';
 import { sk } from 'date-fns/locale';
 import ClientRequestsManagement from './ClientRequestsManagement';
 import PendingApprovalsCompact from './PendingApprovalsCompact';
 
 export default function TrainerDashboard() {
   const { token, user } = useAuth();
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update current time every second for countdown
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   const { data: sessions, error: sessionsError, isLoading: sessionsLoading } = useQuery({
     queryKey: ['sessions'],
@@ -174,23 +186,87 @@ export default function TrainerDashboard() {
 
   // Removed pendingBookings as we no longer show pending bookings
 
-  // Get sessions with approved signups for "Najbližší tréning"
-  const approvedSessions = Array.isArray(sessionsList) ? sessionsList.filter((session: any) => {
-    try {
-      // Check if session is upcoming
-      const isUpcoming = session?.start_time && new Date(session.start_time) > now;
-      if (!isUpcoming) return false;
-      
-      // Check if session has approved signups
-      const hasApprovedSignups = session?.signups && 
-        Array.isArray(session.signups) && 
-        session.signups.some((signup: any) => signup.status === 'approved');
-      
-      return hasApprovedSignups;
-    } catch (error) {
-      return false;
-    }
-  }).slice(0, 5) : [];
+  // Get sessions with approved signups for "Najbližší tréning" - updated logic
+  const getSessionsWithCountdown = () => {
+    if (!Array.isArray(sessionsList)) return [];
+
+    return sessionsList
+      .filter((session: any) => {
+        try {
+          if (!session?.start_time || !session?.end_time) return false;
+          
+          const startTime = new Date(session.start_time);
+          const endTime = new Date(session.end_time);
+          
+          // Show if session hasn't ended yet
+          const isNotFinished = endTime > currentTime;
+          if (!isNotFinished) return false;
+          
+          // Check if session has approved signups
+          const hasApprovedSignups = session?.signups && 
+            Array.isArray(session.signups) && 
+            session.signups.some((signup: any) => signup.status === 'approved');
+          
+          return hasApprovedSignups;
+        } catch (error) {
+          return false;
+        }
+      })
+      .sort((a: any, b: any) => {
+        // Sort by start time (earliest first)
+        return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+      })
+      .slice(0, 3) // Limit to 3 sessions
+      .map((session: any) => {
+        const startTime = new Date(session.start_time);
+        const endTime = new Date(session.end_time);
+        const isOngoing = currentTime >= startTime && currentTime <= endTime;
+        const isUpcoming = currentTime < startTime;
+        
+        let countdownText = '';
+        let countdownValue = 0;
+        let status = '';
+        
+        if (isOngoing) {
+          countdownValue = differenceInMinutes(endTime, currentTime);
+          status = 'ongoing';
+          if (countdownValue > 60) {
+            const hours = Math.floor(countdownValue / 60);
+            const minutes = countdownValue % 60;
+            countdownText = `zostáva ${hours}h ${minutes}min`;
+          } else if (countdownValue > 0) {
+            countdownText = `zostáva ${countdownValue} min`;
+          } else {
+            const seconds = differenceInSeconds(endTime, currentTime);
+            countdownText = seconds > 0 ? `zostáva ${seconds}s` : 'Končí';
+          }
+        } else if (isUpcoming) {
+          countdownValue = differenceInMinutes(startTime, currentTime);
+          status = 'upcoming';
+          if (countdownValue > 60) {
+            const hours = Math.floor(countdownValue / 60);
+            const minutes = countdownValue % 60;
+            countdownText = `za ${hours}h ${minutes}min`;
+          } else if (countdownValue > 0) {
+            countdownText = `za ${countdownValue} min`;
+          } else {
+            const seconds = differenceInSeconds(startTime, currentTime);
+            countdownText = seconds > 0 ? `za ${seconds}s` : 'Začína';
+          }
+        }
+        
+        return {
+          ...session,
+          isOngoing,
+          isUpcoming,
+          countdownText,
+          countdownValue,
+          status
+        };
+      });
+  };
+
+  const approvedSessions = getSessionsWithCountdown();
 
   const stats = [
     {
@@ -250,7 +326,7 @@ export default function TrainerDashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Closest Training */}
+          {/* Closest Training - Enhanced */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center">
@@ -266,24 +342,60 @@ export default function TrainerDashboard() {
                   <p className="mt-1 text-sm text-gray-500">Vytvorte nové tréningy pre vašich klientov.</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-4 max-h-80 overflow-y-auto">
                   {approvedSessions.map((session: any) => (
-                    <div key={session.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900">{session.title || 'Tréning'}</div>
-                        <div className="text-sm text-gray-600 mt-1 flex items-center">
-                          <ClockIcon className="h-4 w-4 mr-1" />
-                          {session.start_time ? format(new Date(session.start_time), 'dd.MM.yyyy HH:mm', { locale: sk }) : 'Čas neurčený'}
+                    <div 
+                      key={session.id} 
+                      className={`p-4 rounded-lg transition-all duration-300 ${
+                        session.isOngoing 
+                          ? 'bg-green-50 border-2 border-green-200 shadow-md' 
+                          : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center">
+                            <div className="font-medium text-gray-900">{session.title || 'Tréning'}</div>
+                            {session.isOngoing && (
+                              <div className="ml-2 flex items-center">
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                <span className="ml-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded-full">
+                                  PREBIEHA
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="text-sm text-gray-600 mt-1 flex items-center">
+                            <ClockIcon className="h-4 w-4 mr-1" />
+                            {session.start_time ? format(new Date(session.start_time), 'dd.MM.yyyy HH:mm', { locale: sk }) : 'Čas neurčený'}
+                          </div>
+                          
+                          {session.location && (
+                            <div className="text-xs text-gray-500 mt-1">📍 {session.location}</div>
+                          )}
+                          
+                          {/* Countdown */}
+                          {session.countdownText && (
+                            <div className={`text-sm font-medium mt-2 flex items-center ${
+                              session.isOngoing ? 'text-green-700' : 'text-blue-700'
+                            }`}>
+                              {session.isOngoing ? (
+                                <PlayIcon className="h-4 w-4 mr-1" />
+                              ) : (
+                                <ClockIcon className="h-4 w-4 mr-1" />
+                              )}
+                              {session.countdownText}
+                            </div>
+                          )}
                         </div>
-                        {session.location && (
-                          <div className="text-xs text-gray-500 mt-1">📍 {session.location}</div>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium text-gray-900">
-                          {session.signups ? session.signups.filter((s: any) => s.status === 'approved').length : 0}/{session.capacity || 0}
+                        
+                        <div className="text-right ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {session.signups ? session.signups.filter((s: any) => s.status === 'approved').length : 0}/{session.capacity || 0}
+                          </div>
+                          <div className="text-xs text-gray-500">schválených</div>
                         </div>
-                        <div className="text-xs text-gray-500">schválených</div>
                       </div>
                     </div>
                   ))}
