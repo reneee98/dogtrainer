@@ -116,6 +116,12 @@ export const sessionApi = {
     apiRequest(`/sessions/${sessionId}/signup`, { token, method: 'POST', body: { dog_id: dogId } }),
   joinWaitlist: (token: string, sessionId: number, dogId: string) =>
     apiRequest(`/sessions/${sessionId}/waitlist`, { token, method: 'POST', body: { dog_id: dogId } }),
+  getSignups: (token: string, sessionId: number) => 
+    apiRequest(`/sessions/${sessionId}/signups`, { token }),
+  approveSignup: (token: string, sessionId: number, signupId: string) =>
+    apiRequest(`/sessions/${sessionId}/signups/${signupId}/approve`, { token, method: 'POST' }),
+  rejectSignup: (token: string, sessionId: number, signupId: string, reason?: string) =>
+    apiRequest(`/sessions/${sessionId}/signups/${signupId}/reject`, { token, method: 'POST', body: { rejection_reason: reason } }),
 };
 
 // Daycare Schedule API

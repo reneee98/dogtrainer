@@ -39,11 +39,13 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
     enabled: !!token,
   });
 
-  const { data: dogs } = useQuery({
+  const { data: dogsResponse } = useQuery({
     queryKey: ['dogs'],
     queryFn: () => dogApi.list(token!),
     enabled: !!token && user?.role === 'owner',
   });
+
+  const dogs = dogsResponse?.data?.dogs || [];
 
   const handleSignup = async () => {
     if (!selectedDogId) {
@@ -155,7 +157,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                           className="form-input"
                         >
                           <option value="">Vyberte psa</option>
-                          {dogs?.map((dog: any) => (
+                          {dogs.map((dog: any) => (
                             <option key={dog.id} value={dog.id}>
                               {dog.name} ({dog.breed})
                             </option>

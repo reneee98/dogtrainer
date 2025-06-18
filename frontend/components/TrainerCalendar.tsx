@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { apiRequest, serviceTemplateApi } from '../lib/api';
+import { apiRequest, serviceTemplateApi, sessionApi } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PlusIcon, CalendarIcon, ListBulletIcon, PencilIcon, TrashIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import SessionForm from './SessionForm';
@@ -188,6 +188,54 @@ const TrainerCalendar = () => {
     } catch (error) {
       console.error('Error deleting session:', error);
       alert('Chyba pri mazaní tréningu');
+    }
+  };
+
+  const handleApproveSignup = async (sessionId: string, signupId: string) => {
+    if (!token) return;
+
+    try {
+      await sessionApi.approveSignup(token, parseInt(sessionId), signupId);
+      
+      // Refresh sessions to show updated signup status
+      fetchSessions();
+      
+      // Update the modal data if still open
+      if (selectedSession && selectedSession.id === sessionId) {
+        const updatedSession = sessions.find(s => s.id === sessionId);
+        if (updatedSession) {
+          setSelectedSession(updatedSession);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Failed to approve signup:', error);
+      alert('Chyba pri schvaľovaní prihlášky');
+    }
+  };
+
+  const handleRejectSignup = async (sessionId: string, signupId: string) => {
+    const reason = window.prompt('Dôvod zamietnutia (nepovinné):');
+    
+    if (!token) return;
+
+    try {
+      await sessionApi.rejectSignup(token, parseInt(sessionId), signupId, reason || undefined);
+      
+      // Refresh sessions to show updated signup status
+      fetchSessions();
+      
+      // Update the modal data if still open
+      if (selectedSession && selectedSession.id === sessionId) {
+        const updatedSession = sessions.find(s => s.id === sessionId);
+        if (updatedSession) {
+          setSelectedSession(updatedSession);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Failed to reject signup:', error);
+      alert('Chyba pri zamietnutí prihlášky');
     }
   };
 
@@ -1426,24 +1474,44 @@ const TrainerCalendar = () => {
                       </h4>
                       <div className="space-y-2">
                         {selectedSession.signups.map((signup: any, index: number) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div>
-                              <div className="font-medium text-gray-900">
-                                {signup.dog?.name || 'Neznámy pes'}
+                          <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <div>
+                                <div className="font-medium text-gray-900">
+                                  {signup.dog?.name || 'Neznámy pes'}
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  {signup.user?.name || signup.dog?.owner?.name || 'Neznámy majiteľ'}
+                                </div>
                               </div>
-                              <div className="text-sm text-gray-600">
-                                {signup.user?.name || 'Neznámy majiteľ'}
-                              </div>
+                              <span className={`
+                                px-2 py-1 rounded-full text-xs font-medium
+                                ${signup.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                  signup.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                                  'bg-red-100 text-red-800'}
+                              `}>
+                                {signup.status === 'approved' ? 'Schválené' :
+                                 signup.status === 'pending' ? 'Čaká' : 'Zamietnuté'}
+                              </span>
                             </div>
-                            <span className={`
-                              px-2 py-1 rounded-full text-xs font-medium
-                              ${signup.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                signup.status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                                'bg-red-100 text-red-800'}
-                            `}>
-                              {signup.status === 'approved' ? 'Schválené' :
-                               signup.status === 'pending' ? 'Čaká' : 'Zamietnuté'}
-                            </span>
+                            
+                            {/* Pending status actions */}
+                            {signup.status === 'pending' && (
+                              <div className="flex space-x-2 mt-2">
+                                <button
+                                  onClick={() => handleApproveSignup(selectedSession.id, signup.id)}
+                                  className="flex-1 px-3 py-1.5 bg-green-500 text-white text-sm rounded-md hover:bg-green-600 transition-colors"
+                                >
+                                  Schváliť
+                                </button>
+                                <button
+                                  onClick={() => handleRejectSignup(selectedSession.id, signup.id)}
+                                  className="flex-1 px-3 py-1.5 bg-red-500 text-white text-sm rounded-md hover:bg-red-600 transition-colors"
+                                >
+                                  Zamietnuť
+                                </button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

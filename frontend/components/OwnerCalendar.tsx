@@ -145,6 +145,12 @@ const OwnerCalendar = () => {
     setShowSessionModal(true);
   };
 
+  // Helper function to get approved signups count
+  const getApprovedSignupsCount = (session: Session) => {
+    if (!session.signups) return 0;
+    return session.signups.filter((signup: any) => signup.status === 'approved').length;
+  };
+
   // Create adapter for SessionDetailModal
   const createSessionAdapter = (session: Session) => ({
     id: parseInt(session.id),
@@ -154,7 +160,7 @@ const OwnerCalendar = () => {
     start_time: session.start_time,
     end_time: session.end_time,
     capacity: session.capacity,
-    current_signups: session.signups?.length || 0,
+    current_signups: getApprovedSignupsCount(session),
     status: session.status === 'scheduled' ? 'active' : session.status,
     price: session.price
   });
@@ -550,7 +556,7 @@ const OwnerCalendar = () => {
                         {formatTime(session.start_time)} - {getSessionLabel(session)}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {session.location} • {session.signups?.length || 0}/{session.capacity}
+                        {session.location} • {getApprovedSignupsCount(session)}/{session.capacity}
                       </div>
                     </div>
                   </div>
@@ -580,7 +586,7 @@ const OwnerCalendar = () => {
                           {formatTime(session.start_time)} - {formatTime(session.end_time)} • {getSessionLabel(session)}
                         </div>
                         <div className="text-sm text-gray-500 mt-0.5">
-                          {session.location} • {session.signups?.length || 0}/{session.capacity} účastníkov
+                          {session.location} • {getApprovedSignupsCount(session)}/{session.capacity} účastníkov
                         </div>
                       </div>
                     </div>
@@ -608,11 +614,11 @@ const OwnerCalendar = () => {
                           <div className="w-24 bg-gray-200 rounded-full h-2">
                             <div 
                               className="h-2 rounded-full bg-blue-500"
-                              style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
+                              style={{ width: `${Math.min((getApprovedSignupsCount(session) / session.capacity) * 100, 100)}%` }}
                             ></div>
                           </div>
                           <span className="text-xs text-gray-500">
-                            {Math.round(((session.signups?.length || 0) / session.capacity) * 100)}%
+                            {Math.round((getApprovedSignupsCount(session) / session.capacity) * 100)}%
                           </span>
                         </div>
                       )}
@@ -721,13 +727,13 @@ const OwnerCalendar = () => {
                             <span className="text-sm font-medium text-gray-600">Účastníci:</span>
                             <div className="flex items-center space-x-2">
                               <span className="text-sm text-gray-900 font-medium">
-                                {session.signups?.length || 0}/{session.capacity}
+                                {getApprovedSignupsCount(session)}/{session.capacity}
                               </span>
                               {session.capacity > 0 && (
                                 <div className="w-16 bg-gray-200 rounded-full h-2">
                                   <div 
                                     className="h-2 rounded-full bg-blue-500"
-                                    style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
+                                    style={{ width: `${Math.min((getApprovedSignupsCount(session) / session.capacity) * 100, 100)}%` }}
                                   ></div>
                                 </div>
                               )}
@@ -774,7 +780,7 @@ const OwnerCalendar = () => {
                               {getSessionLabel(session)}
                             </div>
                             <div className="text-xs text-gray-600 mt-0.5">
-                              {session.signups?.length || 0}/{session.capacity}
+                              {getApprovedSignupsCount(session)}/{session.capacity}
                             </div>
                           </div>
                         </div>
@@ -942,7 +948,7 @@ const OwnerCalendar = () => {
                               {formatTime(session.start_time)} - {getSessionLabel(session)}
                             </div>
                             <div className="text-xs text-gray-500">
-                              {session.location} • {session.signups?.length || 0}/{session.capacity}
+                              {session.location} • {getApprovedSignupsCount(session)}/{session.capacity}
                             </div>
                           </div>
                         </div>
@@ -972,7 +978,7 @@ const OwnerCalendar = () => {
                                 {formatTime(session.start_time)} - {formatTime(session.end_time)} • {getSessionLabel(session)}
                               </div>
                               <div className="text-sm text-gray-500 mt-0.5">
-                                {session.location} • {session.signups?.length || 0}/{session.capacity} účastníkov
+                                {session.location} • {getApprovedSignupsCount(session)}/{session.capacity} účastníkov
                               </div>
                             </div>
                           </div>
@@ -998,11 +1004,11 @@ const OwnerCalendar = () => {
                             <div className="w-24 bg-gray-200 rounded-full h-1.5">
                               <div 
                                 className="h-1.5 rounded-full bg-blue-500"
-                                style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
+                                style={{ width: `${Math.min((getApprovedSignupsCount(session) / session.capacity) * 100, 100)}%` }}
                               ></div>
                             </div>
                             <span className="text-xs text-gray-500">
-                              {Math.round(((session.signups?.length || 0) / session.capacity) * 100)}%
+                              {Math.round((getApprovedSignupsCount(session) / session.capacity) * 100)}%
                             </span>
                           </div>
                         )}
@@ -1047,7 +1053,7 @@ const OwnerCalendar = () => {
                                 </div>
                               </div>
                               <div className="text-xs text-blue-700">
-                                {session.signups?.length || 0}/{session.capacity}
+                                {getApprovedSignupsCount(session)}/{session.capacity}
                               </div>
                             </div>
                             <div className="text-sm text-blue-800 font-medium">
