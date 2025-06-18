@@ -525,38 +525,24 @@ const TrainerCalendar = () => {
           </button>
         </div>
 
-        {/* Desktop Table */}
-        <div className="hidden md:block">
-          {/* Table header */}
-          <div className="bg-gray-50 rounded-lg p-3 mb-2">
-            <div className="grid grid-cols-12 gap-3 text-xs font-medium text-gray-500 uppercase tracking-wide">
-              <div className="col-span-3">Služba</div>
-              <div className="col-span-2">Dátum</div>
-              <div className="col-span-2">Čas</div>
-              <div className="col-span-2">Lokácia</div>
-              <div className="col-span-1">Účastníci</div>
-              <div className="col-span-1">Cena</div>
-              <div className="col-span-1">Akcie</div>
-            </div>
-          </div>
-
-          {/* Table rows */}
-          <div className="space-y-1">
-            {todaysSessions.map((session) => (
-              <div
-                key={session.id}
-                onClick={() => handleSessionClick(session)}
-                className={`bg-white rounded-lg border border-gray-200 p-4 transition-all duration-200 ${getSessionDisplayClass(session)}`}
-              >
-                <div className="grid grid-cols-12 gap-3 p-3 items-center">
-                  {/* Service */}
-                  <div className="col-span-3 flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium truncate text-gray-900">
+        {/* Training Sessions List */}
+        <div className="space-y-4">
+          {todaysSessions.map((session) => (
+            <div
+              key={session.id}
+              onClick={() => handleSessionClick(session)}
+              className={`bg-white rounded-lg border border-gray-200 p-4 transition-all duration-200 cursor-pointer hover:shadow-md ${getSessionDisplayClass(session)}`}
+            >
+              <div className="space-y-3">
+                {/* Header with service name and price */}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${getSessionColor(session)} flex-shrink-0 mt-1.5`}></div>
+                    <div>
+                      <div className="font-medium text-gray-900">
                         {getSessionLabel(session)}
                       </div>
-                      <div className={`text-xs px-1.5 py-0.5 rounded-full inline-flex items-center ${
+                      <div className={`text-xs px-2 py-0.5 rounded-full inline-flex items-center mt-1 ${
                         isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
                         session.status === 'scheduled' ? 'bg-green-100 text-green-700' :
                         session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
@@ -566,168 +552,73 @@ const TrainerCalendar = () => {
                       </div>
                     </div>
                   </div>
-                  
-                  {/* Date */}
-                  <div className="col-span-2">
-                    <div className="text-sm font-medium text-gray-900">
-                      {formatRelativeDate(session.start_time)}
-                    </div>
-                  </div>
-                  
-                  {/* Time */}
-                  <div className="col-span-2">
-                    <div className="text-sm text-gray-600">
-                      {formatTime(session.start_time)} - {formatTime(session.end_time)}
-                    </div>
-                  </div>
-                  
-                  {/* Location */}
-                  <div className="col-span-2">
-                    <div className="text-sm text-gray-600 truncate">
-                      {session.location}
-                    </div>
-                  </div>
-                  
-                  {/* Participants */}
-                  <div className="col-span-1">
-                    <div className="text-sm text-gray-600">
-                      {session.signups?.length || 0}/{session.capacity}
-                    </div>
-                    {session.capacity > 0 && (
-                       <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
-                         <div 
-                           className="h-1 rounded-full bg-blue-500"
-                           style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
-                         ></div>
-                       </div>
-                     )}
-                  </div>
-                  
-                  {/* Price */}
-                  <div className="col-span-1">
-                    <div className="text-sm font-semibold text-gray-900">
-                      {session.price}€
-                    </div>
-                  </div>
-                  
-                  {/* Actions */}
-                  <div className="col-span-1">
-                    <div className="flex space-x-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditSession(session);
-                        }}
-                        className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                        title="Upraviť"
-                      >
-                        <PencilIcon className="h-3 w-3" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteSession(session.id);
-                        }}
-                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                        title="Zmazať"
-                      >
-                        <TrashIcon className="h-3 w-3" />
-                      </button>
-                    </div>
+                  <div className="text-lg font-semibold text-gray-900">
+                    {session.price}€
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Mobile Cards */}
-        <div className="md:hidden space-y-3">
-          {todaysSessions.map((session) => (
-            <div
-              key={session.id}
-              onClick={() => handleSessionClick(session)}
-              className={`bg-white rounded-lg border border-gray-200 p-4 transition-all duration-200 ${getSessionDisplayClass(session)}`}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center space-x-2">
-                  <div className={`w-2 h-2 rounded-full ${getSessionColor(session)} flex-shrink-0`}></div>
-                  <div className="font-medium text-gray-900">
-                    {getSessionLabel(session)}
-                  </div>
-                  <div className={`text-xs px-2 py-0.5 rounded-full inline-flex items-center ${
-                    isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
-                    session.status === 'scheduled' ? 'bg-green-100 text-green-700' :
-                    session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    {getDisplayStatus(session)}
-                  </div>
-                </div>
-                <div className="text-lg font-semibold text-gray-900">
-                  {session.price}€
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Dátum:</span>
-                  <span className="text-sm font-medium text-gray-900">
-                    {formatRelativeDate(session.start_time)}
-                  </span>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Čas:</span>
-                  <span className="text-sm text-gray-900">
-                    {formatTime(session.start_time)} - {formatTime(session.end_time)}
-                  </span>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Lokácia:</span>
-                  <span className="text-sm text-gray-900">{session.location}</span>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Účastníci:</span>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-900">
-                      {session.signups?.length || 0}/{session.capacity}
+                {/* Session details */}
+                <div className="space-y-2 border-t border-gray-100 pt-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Dátum:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {formatRelativeDate(session.start_time)}
                     </span>
-                    {session.capacity > 0 && (
-                      <div className="w-16 bg-gray-200 rounded-full h-1">
-                        <div 
-                          className="h-1 rounded-full bg-blue-500"
-                          style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
-                        ></div>
-                      </div>
-                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Čas:</span>
+                    <span className="text-sm text-gray-900">
+                      {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Lokácia:</span>
+                    <span className="text-sm text-gray-900 truncate max-w-[60%] text-right">
+                      {session.location}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Účastníci:</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-900">
+                        {session.signups?.length || 0}/{session.capacity}
+                      </span>
+                      {session.capacity > 0 && (
+                        <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                          <div 
+                            className="h-1.5 rounded-full bg-blue-500"
+                            style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="flex justify-end space-x-2 mt-3 pt-3 border-t border-gray-100">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditSession(session);
-                  }}
-                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  title="Upraviť"
-                >
-                  <PencilIcon className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteSession(session.id);
-                  }}
-                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Zmazať"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                </button>
+
+                {/* Actions */}
+                <div className="flex justify-end space-x-2 border-t border-gray-100 pt-3">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditSession(session);
+                    }}
+                    className="px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                  >
+                    Upraviť
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteSession(session.id);
+                    }}
+                    className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded transition-colors"
+                  >
+                    Zmazať
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -741,8 +632,8 @@ const TrainerCalendar = () => {
 
     return (
       <div className="space-y-4">
-        {/* Day headers - Horizontal scroll on mobile */}
-        <div className="grid grid-cols-7 gap-1 sm:gap-2">
+        {/* Day headers - Only show on desktop */}
+        <div className="hidden sm:grid sm:grid-cols-7 sm:gap-1 sm:gap-2">
           {weekDayNames.map((dayName, index) => {
             const day = weekDays[index];
             const isTodayDay = isToday(day);
@@ -750,7 +641,7 @@ const TrainerCalendar = () => {
             return (
               <div key={dayName} className="p-2 sm:p-4 text-center bg-gray-50 rounded-lg">
                 <div className="text-xs sm:text-sm font-medium text-gray-600 truncate">
-                  {window.innerWidth < 640 ? dayName.substring(0, 2) : dayName}
+                  {dayName}
                 </div>
                 <div className={`text-lg sm:text-2xl font-bold ${isTodayDay ? 'text-blue-600' : 'text-gray-900'}`}>
                   {day.getDate()}
@@ -760,63 +651,96 @@ const TrainerCalendar = () => {
           })}
         </div>
 
-        {/* Mobile: List view of sessions */}
+        {/* Mobile: Complete vertical list view of sessions by day */}
         <div className="sm:hidden space-y-4">
           {weekDays.map((day, index) => {
             const daySessions = getSessionsForDate(day);
             const isTodayDay = isToday(day);
 
+            // Skip days with no sessions on mobile for cleaner view
+            if (daySessions.length === 0) return null;
+
             return (
-              <div key={index}>
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-medium text-gray-700">
+              <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className={`text-lg font-semibold ${isTodayDay ? 'text-blue-600' : 'text-gray-900'}`}>
                     {weekDayNames[index]}, {day.getDate()}. {monthNames[day.getMonth()]}
+                    {isTodayDay && <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Dnes</span>}
                   </h3>
                   <button
                     onClick={() => handleCreateSessionClick(day)}
-                    className="p-1 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+                    className="p-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
                   >
                     <PlusIcon className="h-4 w-4" />
                   </button>
                 </div>
                 
-                {daySessions.length > 0 ? (
-                  <div className="space-y-2">
-                    {daySessions.map((session) => (
-                      <div
-                        key={session.id}
-                        onClick={() => handleSessionClick(session)}
-                        className={`p-3 rounded-lg transition-all active:scale-[0.98] bg-gray-100 border border-gray-200 ${getSessionDisplayClass(session)}`}
-                      >
-                        <div className="flex items-center space-x-2 mb-2">
-                          <div className={`w-2 h-2 rounded-full ${getSessionColor(session)}`}></div>
-                          <div className="font-medium text-sm text-gray-900">{getSessionLabel(session)}</div>
-                          <div className={`text-xs px-2 py-0.5 rounded-full inline-flex items-center ${
-                            isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
-                            session.status === 'scheduled' ? 'bg-green-100 text-green-700' :
-                            session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
-                            'bg-red-100 text-red-700'
-                          }`}>
-                            {getDisplayStatus(session)}
+                <div className="space-y-4">
+                  {daySessions.map((session) => (
+                    <div
+                      key={session.id}
+                      onClick={() => handleSessionClick(session)}
+                      className={`p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer ${getSessionDisplayClass(session)}`}
+                    >
+                      <div className="space-y-3">
+                        {/* Header row */}
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start space-x-3">
+                            <div className={`w-3 h-3 rounded-full ${getSessionColor(session)} flex-shrink-0 mt-1`}></div>
+                            <div>
+                              <div className="font-semibold text-gray-900 text-base">
+                                {getSessionLabel(session)}
+                              </div>
+                              <div className={`text-xs px-2 py-1 rounded-full inline-flex items-center mt-1 ${
+                                isSessionCompleted(session) ? 'bg-green-100 text-green-700' :
+                                session.status === 'scheduled' ? 'bg-green-100 text-green-700' :
+                                session.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                                'bg-red-100 text-red-700'
+                              }`}>
+                                {getDisplayStatus(session)}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-xl font-bold text-gray-900">
+                            {session.price}€
                           </div>
                         </div>
-                        <div className="text-xs text-gray-600">
-                          {formatTime(session.start_time)} - {formatTime(session.end_time)}
-                        </div>
-                        <div className="text-xs text-gray-600">{session.location}</div>
-                        {session.signups && (
-                          <div className="text-xs text-gray-600 mt-1">
-                            {session.signups.length}/{session.capacity} účastníkov
+
+                        {/* Details section */}
+                        <div className="border-t border-gray-100 pt-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-600">Čas:</span>
+                            <span className="text-sm text-gray-900 font-medium">
+                              {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                            </span>
                           </div>
-                        )}
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-600">Lokácia:</span>
+                            <span className="text-sm text-gray-900 truncate max-w-[60%] text-right">
+                              {session.location}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-600">Účastníci:</span>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm text-gray-900 font-medium">
+                                {session.signups?.length || 0}/{session.capacity}
+                              </span>
+                              {session.capacity > 0 && (
+                                <div className="w-16 bg-gray-200 rounded-full h-2">
+                                  <div 
+                                    className="h-2 rounded-full bg-blue-500"
+                                    style={{ width: `${Math.min(((session.signups?.length || 0) / session.capacity) * 100, 100)}%` }}
+                                  ></div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-500 italic p-4 bg-gray-50 rounded-lg">
-                    Žiadne tréningy
-                  </div>
-                )}
+                    </div>
+                  ))}
+                </div>
               </div>
             );
           })}
