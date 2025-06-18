@@ -8,6 +8,7 @@ use App\Models\SessionSignup;
 use App\Models\SessionWaitlist;
 use App\Models\TrainerClient;
 use App\Models\Dog;
+use App\Models\ServiceTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -60,8 +61,32 @@ class SessionController extends Controller
             $sessions = $query->orderBy('start_time')
                              ->get();
 
-            // Transform sessions to include available_spots
-            $transformedSessions = $sessions->map(function ($session) {
+            // Get all service templates for the trainers involved
+            $trainerIds = $sessions->pluck('trainer_id')->unique();
+            $serviceTemplates = ServiceTemplate::whereIn('user_id', $trainerIds)->get();
+            
+            // Create a lookup map for service templates by trainer and name
+            $templateLookup = [];
+            foreach ($serviceTemplates as $template) {
+                $templateLookup[$template->user_id][$template->name] = $template;
+            }
+
+            // Transform sessions to include available_spots and service template info
+            $transformedSessions = $sessions->map(function ($session) use ($templateLookup) {
+                // Find matching service template
+                $serviceTemplate = null;
+                if (isset($templateLookup[$session->trainer_id][$session->title])) {
+                    $template = $templateLookup[$session->trainer_id][$session->title];
+                    $serviceTemplate = [
+                        'id' => $template->id,
+                        'name' => $template->name,
+                        'color' => $template->color,
+                        'duration' => $template->duration,
+                        'price' => $template->price,
+                        'description' => $template->description,
+                    ];
+                }
+
                 return [
                     'id' => $session->id,
                     'title' => $session->title,
@@ -78,6 +103,7 @@ class SessionController extends Controller
                     'signups' => $session->signups,
                     'waitlist' => $session->waitlist,
                     'available_spots' => $session->available_spots, // This triggers the accessor
+                    'service_template' => $serviceTemplate, // Include service template data
                 ];
             });
 

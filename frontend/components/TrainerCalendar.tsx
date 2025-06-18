@@ -17,6 +17,7 @@ interface Session {
   status: string;
   waitlist_enabled: boolean;
   signups?: any[];
+  service_template?: ServiceTemplate;
 }
 
 interface ServiceTemplate {
@@ -254,13 +255,42 @@ const TrainerCalendar = () => {
     if (session.status === 'cancelled') return 'bg-red-500';
     if (session.status === 'completed') return 'bg-gray-400';
     
-    // Debug logging
-    console.log('Session:', session.title, 'Templates available:', serviceTemplates.length);
-    if (serviceTemplates.length > 0) {
-      console.log('Templates:', serviceTemplates.map(t => t.name));
+    // Use service template data directly from session if available (preferred)
+    if (session.service_template) {
+      console.log('Found service template for', session.title, '- color:', session.service_template.color);
+      
+      // Convert simple color name to Tailwind class
+      const colorMap: { [key: string]: string } = {
+        'red': 'bg-red-500',
+        'orange': 'bg-orange-500',
+        'amber': 'bg-amber-500',
+        'yellow': 'bg-yellow-500',
+        'lime': 'bg-lime-500',
+        'green': 'bg-green-500',
+        'emerald': 'bg-emerald-500',
+        'teal': 'bg-teal-500',
+        'cyan': 'bg-cyan-500',
+        'sky': 'bg-sky-500',
+        'blue': 'bg-blue-500',
+        'indigo': 'bg-indigo-500',
+        'violet': 'bg-violet-500',
+        'purple': 'bg-purple-500',
+        'fuchsia': 'bg-fuchsia-500',
+        'pink': 'bg-pink-500',
+        'rose': 'bg-rose-500',
+        'gray': 'bg-gray-500',
+        'slate': 'bg-slate-500',
+        'zinc': 'bg-zinc-500',
+        'neutral': 'bg-neutral-500',
+        'stone': 'bg-stone-500'
+      };
+      
+      const tailwindColor = colorMap[session.service_template.color] || 'bg-gray-500';
+      console.log('Converted color:', session.service_template.color, '->', tailwindColor);
+      return tailwindColor;
     }
     
-    // Try to find matching service template by title
+    // Fallback: Try to find matching service template by title (for backward compatibility)
     const template = serviceTemplates.find(t => t.name === session.title);
     if (template) {
       console.log('Found template for', session.title, '- color:', template.color);
@@ -326,7 +356,12 @@ const TrainerCalendar = () => {
   };
 
   const getSessionLabel = (session: Session) => {
-    // Try to find matching service template by title
+    // Use service template data directly from session if available (preferred)
+    if (session.service_template) {
+      return session.service_template.name;
+    }
+    
+    // Fallback: Try to find matching service template by title (for backward compatibility)
     const template = serviceTemplates.find(t => t.name === session.title);
     if (template) {
       return template.name;

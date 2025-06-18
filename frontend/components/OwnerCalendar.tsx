@@ -17,6 +17,7 @@ interface Session {
   status: string;
   waitlist_enabled: boolean;
   signups?: any[];
+  service_template?: ServiceTemplate;
 }
 
 interface ServiceTemplate {
@@ -209,16 +210,9 @@ const OwnerCalendar = () => {
     if (session.status === 'cancelled') return 'bg-red-500';
     if (session.status === 'completed') return 'bg-gray-400';
     
-    // Debug logging
-    console.log('Session:', session.title, 'Templates available:', serviceTemplates.length);
-    if (serviceTemplates.length > 0) {
-      console.log('Templates:', serviceTemplates.map(t => t.name));
-    }
-    
-    // Try to find matching service template by title
-    const template = serviceTemplates.find(t => t.name === session.title);
-    if (template) {
-      console.log('Found template for', session.title, '- color:', template.color);
+    // Use service template data directly from session if available
+    if (session.service_template) {
+      console.log('Found service template for', session.title, '- color:', session.service_template.color);
       
       // Convert simple color name to Tailwind class
       const colorMap: { [key: string]: string } = {
@@ -246,11 +240,11 @@ const OwnerCalendar = () => {
         'stone': 'bg-stone-500'
       };
       
-      const tailwindColor = colorMap[template.color] || 'bg-gray-500';
-      console.log('Converted color:', template.color, '->', tailwindColor);
+      const tailwindColor = colorMap[session.service_template.color] || 'bg-gray-500';
+      console.log('Converted color:', session.service_template.color, '->', tailwindColor);
       return tailwindColor;
     } else {
-      console.log('No template found for', session.title);
+      console.log('No service template found for', session.title);
     }
     
     // Fallback to type-based colors
@@ -281,10 +275,9 @@ const OwnerCalendar = () => {
   };
 
   const getSessionLabel = (session: Session) => {
-    // Try to find matching service template by title
-    const template = serviceTemplates.find(t => t.name === session.title);
-    if (template) {
-      return template.name;
+    // Use service template data directly from session if available
+    if (session.service_template) {
+      return session.service_template.name;
     }
     
     // Fallback to session title
