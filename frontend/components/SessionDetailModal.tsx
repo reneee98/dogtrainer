@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { XMarkIcon, PlusIcon, PlayIcon, StopIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { sessionApi, dogApi } from '../lib/api';
 import { toast } from 'react-toastify';
@@ -35,6 +35,32 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
   const [selectedDogId, setSelectedDogId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
+
+  // Mutation for starting session
+  const startSessionMutation = useMutation({
+    mutationFn: () => sessionApi.update(token!, parseInt(session.id), { status: 'active' }),
+    onSuccess: () => {
+      toast.success('Tréning bol úspešne spustený');
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['session', session.id] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Chyba pri spustení tréningu');
+    }
+  });
+
+  // Mutation for ending session
+  const endSessionMutation = useMutation({
+    mutationFn: () => sessionApi.update(token!, parseInt(session.id), { status: 'completed' }),
+    onSuccess: () => {
+      toast.success('Tréning bol úspešne ukončený');
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['session', session.id] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Chyba pri ukončení tréningu');
+    }
+  });
 
   const { data: dogsResponse } = useQuery({
     queryKey: ['dogs'],
@@ -75,6 +101,23 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
   const currentSignups = session.signups?.filter((signup: any) => signup.status === 'approved').length || 0;
   const isFull = currentSignups >= session.capacity;
   const canSignup = isOwner && (session.status === 'scheduled' || session.status === 'active') && !isFull;
+
+  // Session control handlers
+  const handleStartSession = () => {
+    if (!isFull) {
+      toast.error('Tréning môže byť spustený len ak sú všetky miesta obsadené');
+      return;
+    }
+    startSessionMutation.mutate();
+  };
+
+  const handleEndSession = () => {
+    endSessionMutation.mutate();
+  };
+
+  // Check if session can be started (must be full)
+  const canStartSession = isTrainer && session.status === 'scheduled' && isFull;
+  const canEndSession = isTrainer && session.status === 'active';
 
   // Enhanced debug logging
   console.log('SessionDetailModal Debug:', {
@@ -151,6 +194,65 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
               </div>
             )}
           </div>
+
+          {/* Trainer Session Controls */}
+          {isTrainer && (
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                <PlayIcon className="h-5 w-5 text-blue-600 mr-2" />
+                Ovládanie tréningu
+              </h4>
+              
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  {!isFull && session.status === 'scheduled' && (
+                    <p className="text-amber-600">
+                      ⚠️ Tréning môže byť spustený len ak sú všetky miesta obsadené ({currentSignups}/{session.capacity})
+                    </p>
+                  )}
+                  {isFull && session.status === 'scheduled' && (
+                    <p className="text-green-600">
+                      ✅ Tréning je pripravený na spustenie - všetky miesta sú obsadené
+                    </p>
+                  )}
+                  {session.status === 'active' && (
+                    <p className="text-blue-600">
+                      🏃‍♂️ Tréning prebieha - môžete ho ukončiť
+                    </p>
+                  )}
+                  {session.status === 'completed' && (
+                    <p className="text-gray-600">
+                      ✅ Tréning bol ukončený
+                    </p>
+                  )}
+                </div>
+                
+                <div className="flex space-x-2">
+                  {canStartSession && (
+                    <button
+                      onClick={handleStartSession}
+                      disabled={startSessionMutation.isPending}
+                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center transition-colors"
+                    >
+                      <PlayIcon className="h-4 w-4 mr-2" />
+                      {startSessionMutation.isPending ? 'Spúšťa sa...' : 'Spustiť tréning'}
+                    </button>
+                  )}
+                  
+                  {canEndSession && (
+                    <button
+                      onClick={handleEndSession}
+                      disabled={endSessionMutation.isPending}
+                      className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center transition-colors"
+                    >
+                      <StopIcon className="h-4 w-4 mr-2" />
+                      {endSessionMutation.isPending ? 'Ukončuje sa...' : 'Ukončiť tréning'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
 
 

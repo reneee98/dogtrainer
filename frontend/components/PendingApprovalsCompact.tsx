@@ -4,12 +4,14 @@ import {
   ClockIcon, 
   CheckIcon, 
   XMarkIcon,
-  UserIcon
+  UserIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { sessionApi } from '../lib/api';
 import { format } from 'date-fns';
 import { sk } from 'date-fns/locale';
+import SessionDetailModal from './SessionDetailModal';
 
 interface PendingSignup {
   id: string;
@@ -29,6 +31,8 @@ interface PendingSignup {
 export default function PendingApprovalsCompact() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
+  const [selectedSession, setSelectedSession] = useState<any>(null);
+  const [showSessionModal, setShowSessionModal] = useState(false);
 
   // Fetch sessions with pending signups
   const { data: sessions, isLoading } = useQuery({
@@ -46,9 +50,12 @@ export default function PendingApprovalsCompact() {
       sessionsList = sessions.data;
     }
   }
-  
+
+  // Store sessions map for easy lookup
+  const sessionsMap = new Map();
   if (sessionsList && Array.isArray(sessionsList)) {
     sessionsList.forEach((session: any) => {
+      sessionsMap.set(session.id, session);
       if (session.signups && Array.isArray(session.signups)) {
         session.signups.forEach((signup: any) => {
           if (signup.status === 'pending') {
@@ -93,6 +100,19 @@ export default function PendingApprovalsCompact() {
 
   const handleReject = (sessionId: string, signupId: string) => {
     rejectMutation.mutate({ sessionId, signupId });
+  };
+
+  const handleViewSession = (sessionId: string) => {
+    const session = sessionsMap.get(sessionId);
+    if (session) {
+      setSelectedSession(session);
+      setShowSessionModal(true);
+    }
+  };
+
+  const handleCloseSessionModal = () => {
+    setShowSessionModal(false);
+    setSelectedSession(null);
   };
 
   if (isLoading) {
@@ -168,6 +188,13 @@ export default function PendingApprovalsCompact() {
               
               <div className="flex space-x-2 ml-2 flex-shrink-0">
                 <button
+                  onClick={() => handleViewSession(signup.session_id)}
+                  className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  title="Zobraziť detail"
+                >
+                  <EyeIcon className="h-4 w-4" />
+                </button>
+                <button
                   onClick={() => handleApprove(signup.session_id, signup.id)}
                   disabled={approveMutation.isPending}
                   className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
@@ -188,6 +215,14 @@ export default function PendingApprovalsCompact() {
           ))}
         </div>
       </div>
+
+      {/* Session Detail Modal */}
+      {showSessionModal && selectedSession && (
+        <SessionDetailModal
+          session={selectedSession}
+          onClose={handleCloseSessionModal}
+        />
+      )}
     </div>
   );
 } 

@@ -15,6 +15,7 @@ import { format, startOfWeek, endOfWeek, isWithinInterval, differenceInMinutes, 
 import { sk } from 'date-fns/locale';
 import ClientRequestsManagement from './ClientRequestsManagement';
 import PendingApprovalsCompact from './PendingApprovalsCompact';
+import SessionDetailModal from './SessionDetailModal';
 
 interface TrainerDashboardProps {
   setActiveSection?: (section: string) => void;
@@ -23,6 +24,8 @@ interface TrainerDashboardProps {
 export default function TrainerDashboard({ setActiveSection }: TrainerDashboardProps = {}) {
   const { token, user } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [selectedSession, setSelectedSession] = useState<any>(null);
+  const [showSessionModal, setShowSessionModal] = useState(false);
 
   // Update current time every second for countdown
   useEffect(() => {
@@ -299,6 +302,16 @@ export default function TrainerDashboard({ setActiveSection }: TrainerDashboardP
     },
   ];
 
+  const handleSessionClick = (session: any) => {
+    setSelectedSession(session);
+    setShowSessionModal(true);
+  };
+
+  const handleCloseSessionModal = () => {
+    setShowSessionModal(false);
+    setSelectedSession(null);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -363,9 +376,10 @@ export default function TrainerDashboard({ setActiveSection }: TrainerDashboardP
                   {approvedSessions.slice(0, 3).map((session: any) => (
                     <div 
                       key={session.id} 
-                      className={`p-4 rounded-lg transition-all duration-300 ${
+                      onClick={() => handleSessionClick(session)}
+                      className={`p-4 rounded-lg transition-all duration-300 cursor-pointer ${
                         session.isOngoing 
-                          ? 'bg-green-50 border-2 border-green-200 shadow-md' 
+                          ? 'bg-green-50 border-2 border-green-200 shadow-md hover:bg-green-100' 
                           : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
                       }`}
                     >
@@ -476,6 +490,14 @@ export default function TrainerDashboard({ setActiveSection }: TrainerDashboardP
           <ClientRequestsManagement />
         </div>
       </div>
+
+      {/* Session Detail Modal */}
+      {showSessionModal && selectedSession && (
+        <SessionDetailModal
+          session={selectedSession}
+          onClose={handleCloseSessionModal}
+        />
+      )}
     </div>
   );
 } 
