@@ -6,7 +6,10 @@ import ScheduleManagement from '../components/ScheduleManagement';
 import OwnerCalendar from '../components/OwnerCalendar';
 import SessionsListTrainer from '../components/SessionsListTrainer';
 import TrainerCalendar from '../components/TrainerCalendar';
-import ServicesManagement from '../components/ServicesManagement';
+import DogsList from '../components/DogsList';
+
+import OwnerOnboardingFlow from '../components/OwnerOnboardingFlow';
+import { dogApi } from '../lib/api';
 import { 
   FaDog, 
   FaCalendarAlt, 
@@ -34,7 +37,7 @@ interface DashboardStat {
 }
 
 export default function Dashboard() {
-  const { user, logout, loading } = useAuth();
+  const { user, logout, loading, token } = useAuth();
   const router = useRouter();
   const [activeSection, setActiveSection] = useState('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -44,6 +47,10 @@ export default function Dashboard() {
     sessions: 0,
     reviews: 4.9
   });
+  
+  // Onboarding state
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [hasCheckedForOnboarding, setHasCheckedForOnboarding] = useState(false);
 
   // Touch/swipe handling
   const touchStartX = useRef<number>(0);
@@ -88,6 +95,40 @@ export default function Dashboard() {
       router.push('/auth');
     }
   }, [user, loading, router]);
+
+  // Check if user needs onboarding (only for owners)
+  useEffect(() => {
+    if (user && user.role === 'owner' && token && !hasCheckedForOnboarding) {
+      checkForOnboarding();
+    }
+  }, [user, token, hasCheckedForOnboarding]);
+
+  const checkForOnboarding = async () => {
+    try {
+      const dogsResponse = await dogApi.list(token!);
+      const dogs = dogsResponse.data?.dogs || [];
+      
+      // Show onboarding if user has no dogs
+      if (dogs.length === 0) {
+        setShowOnboarding(true);
+      }
+      
+      setHasCheckedForOnboarding(true);
+    } catch (error) {
+      console.error('Error checking for onboarding:', error);
+      setHasCheckedForOnboarding(true);
+    }
+  };
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    // Refresh the page or update state to reflect new data
+    window.location.reload();
+  };
+
+  const handleOnboardingClose = () => {
+    setShowOnboarding(false);
+  };
 
   // Close sidebar on escape key
   useEffect(() => {
@@ -386,7 +427,10 @@ export default function Dashboard() {
                       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Rýchle akcie</h3>
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                          <button className="flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 active:bg-blue-200 transition-colors">
+                          <button 
+                            onClick={() => setShowOnboarding(true)}
+                            className="flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 active:bg-blue-200 transition-colors"
+                          >
                             <FaPlus className="text-blue-600 mr-3" />
                             <span className="text-blue-900 font-medium text-sm">Pridať psa</span>
                           </button>
@@ -409,20 +453,7 @@ export default function Dashboard() {
             {activeSection === 'dogs' && user.role === 'owner' && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-3">Moji psi</h2>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="text-center py-6">
-                    <FaDog className="mx-auto text-4xl text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Správa psov</h3>
-                    <p className="text-gray-600 mb-6 text-sm">Pridajte a spravujte svojich psov.</p>
-                    <button
-                      onClick={() => alert('Pridávanie psov bude čoskoro dostupné!')}
-                      className="bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white px-6 py-2.5 rounded-lg flex items-center mx-auto transition-colors text-sm font-medium"
-                    >
-                      <FaPlus className="mr-2 text-sm" />
-                      Pridať psa
-                    </button>
-                  </div>
-                </div>
+                <DogsList />
               </div>
             )}
 
@@ -451,7 +482,20 @@ export default function Dashboard() {
             {activeSection === 'services' && user.role === 'trainer' && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-3">Služby</h2>
-                <ServicesManagement />
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="text-center py-6">
+                    <FaCogs className="mx-auto text-4xl text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Správa služieb</h3>
+                    <p className="text-gray-600 mb-6 text-sm">Spravujte svoje tréningové služby a šablóny.</p>
+                    <button
+                      onClick={() => alert('Správa služieb bude čoskoro dostupná!')}
+                      className="bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white px-6 py-2.5 rounded-lg flex items-center mx-auto transition-colors text-sm font-medium"
+                    >
+                      <FaPlus className="mr-2 text-sm" />
+                      Pridať službu
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -495,6 +539,14 @@ export default function Dashboard() {
           </div>
         </main>
       </div>
+
+      {/* Onboarding Flow */}
+      {showOnboarding && (
+        <OwnerOnboardingFlow
+          onComplete={handleOnboardingComplete}
+          onClose={handleOnboardingClose}
+        />
+      )}
     </div>
   );
 } 
