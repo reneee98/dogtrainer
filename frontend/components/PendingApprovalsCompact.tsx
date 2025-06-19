@@ -139,7 +139,7 @@ export default function PendingApprovalsCompact() {
 
   const handleApproveSignup = async (sessionId: string, signupId: string) => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/sessions/${sessionId}/signups/${signupId}/approve`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/sessions/${sessionId}/signups/${signupId}/approve`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -161,7 +161,7 @@ export default function PendingApprovalsCompact() {
     const reason = window.prompt('Dôvod zamietnutia (nepovinné):');
     
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/sessions/${sessionId}/signups/${signupId}/reject`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/sessions/${sessionId}/signups/${signupId}/reject`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -186,7 +186,7 @@ export default function PendingApprovalsCompact() {
     }
 
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/sessions/${sessionId}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/sessions/${sessionId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -142,7 +142,7 @@ export const reviewApi = {
   reply: (token: string, id: number, reply: string) => 
     apiRequest(`/reviews/${id}/reply`, { token, method: 'POST', body: { reply } }),
   trainerStats: (token: string, trainerId: number) => 
-    apiRequest(`/reviews/trainer/${trainerId}/stats`, { token }),
+    apiRequest(`/trainers/${trainerId}/stats`, { token }),
 };
 
 // Service Template API

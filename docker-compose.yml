@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Frontend - Next.js
   frontend:
@@ -13,7 +11,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
       - backend
 

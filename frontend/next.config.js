@@ -4,15 +4,9 @@ const nextConfig = {
   experimental: {
     // Remove outputFileTracingRoot that was causing issues
   },
-  // API Proxy Configuration
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://localhost:8000/api/:path*',
-      },
-    ];
-  },
+  // Remove API proxy for Docker setup - frontend will call backend directly
+  // API calls should go directly to http://localhost:8000/api/*
+  
   // PWA Configuration
   images: {
     domains: ['localhost'],
